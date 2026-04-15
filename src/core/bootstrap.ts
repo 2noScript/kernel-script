@@ -3,9 +3,13 @@ import type { BaseEngine } from '@/core/types/engine';
 import { getQueueManager } from '@/core/queue-manager';
 import { registerAllEngines } from '@/core/registry';
 
-export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
-  const queueManager = getQueueManager();
+export const setupBackgroundEngine = (engines: Record<string, BaseEngine>, debug = false) => {
+  const queueManager = getQueueManager({ debug });
   registerAllEngines(engines, queueManager);
+
+  const debugLog = (...args: unknown[]) => {
+    if (debug) console.log(...args);
+  };
 
   // --- Internal Helpers ---
 
@@ -63,10 +67,10 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
 
   const bootstrap = async () => {
     try {
-      console.log('🚀 Bootstrapping Background Queue Manager...');
+      debugLog('🚀 Bootstrapping Background Queue Manager...');
       await queueManager.hydrate();
       await queueManager.rehydrateTasks();
-      console.log('✅ Background Queue Manager Ready.');
+      debugLog('✅ Background Queue Manager Ready.');
     } catch (error) {
       console.error('❌ Bootstrap failed:', error);
     }
@@ -87,6 +91,7 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
 
       switch (command) {
         case QUEUE_COMMAND.SYNC:
+          debugLog(`[BOOTSTRAP] SYNC from ${keycard}/${identifier || 'default'}`);
           sendResponse({
             tasks: queueManager.getTasks(keycard, identifier),
             status: queueManager.getStatus(keycard, identifier),
@@ -94,10 +99,16 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
           break;
 
         case QUEUE_COMMAND.CANCEL_TASK:
+          debugLog(
+            `[BOOTSTRAP] CANCEL_TASK ${payload.taskId} from ${keycard}/${identifier || 'default'}`
+          );
           handleAsyncCommand(queueManager.cancelTask(keycard, identifier, payload.taskId));
           return true; // Keep connection to send response later
 
         case QUEUE_COMMAND.CANCEL_TASKS:
+          debugLog(
+            `[BOOTSTRAP] CANCEL_TASKS ${payload.taskIds.length} tasks from ${keycard}/${identifier || 'default'}`
+          );
           handleAsyncCommand(
             Promise.all(
               payload.taskIds.map((id: string) => queueManager.cancelTask(keycard, identifier, id))
@@ -106,38 +117,51 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
           return true;
 
         case QUEUE_COMMAND.ADD:
+          debugLog(
+            `[BOOTSTRAP] ADD task ${payload.task?.id} to ${keycard}/${identifier || 'default'}`
+          );
           handleAsyncCommand(queueManager.add(keycard, identifier, payload.task));
           return true;
 
         case QUEUE_COMMAND.ADD_MANY:
+          debugLog(
+            `[BOOTSTRAP] ADD_MANY ${payload.tasks?.length} tasks to ${keycard}/${identifier || 'default'}`
+          );
           handleAsyncCommand(queueManager.addMany(keycard, identifier, payload.tasks));
           return true;
 
         case QUEUE_COMMAND.START:
+          debugLog(`[BOOTSTRAP] START queue ${keycard}/${identifier || 'default'}`);
           handleAsyncCommand(queueManager.start(keycard, identifier));
           return true;
 
         case QUEUE_COMMAND.STOP:
+          debugLog(`[BOOTSTRAP] STOP queue ${keycard}/${identifier || 'default'}`);
           handleAsyncCommand(queueManager.stop(keycard, identifier));
           return true;
 
         case QUEUE_COMMAND.PAUSE:
+          debugLog(`[BOOTSTRAP] PAUSE queue ${keycard}/${identifier || 'default'}`);
           handleAsyncCommand(queueManager.pause(keycard, identifier));
           return true;
 
         case QUEUE_COMMAND.RESUME:
+          debugLog(`[BOOTSTRAP] RESUME queue ${keycard}/${identifier || 'default'}`);
           handleAsyncCommand(queueManager.resume(keycard, identifier));
           return true;
 
         case QUEUE_COMMAND.CLEAR:
+          debugLog(`[BOOTSTRAP] CLEAR queue ${keycard}/${identifier || 'default'}`);
           handleAsyncCommand(queueManager.clear(keycard, identifier));
           return true;
 
         case QUEUE_COMMAND.GET_STATUS:
+          debugLog(`[BOOTSTRAP] GET_STATUS from ${keycard}/${identifier || 'default'}`);
           sendResponse(queueManager.getStatus(keycard, identifier));
           break;
 
         case QUEUE_COMMAND.GET_TASKS:
+          debugLog(`[BOOTSTRAP] GET_TASKS from ${keycard}/${identifier || 'default'}`);
           sendResponse({ tasks: queueManager.getTasks(keycard, identifier) });
           break;
 
@@ -147,7 +171,7 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
           break;
 
         default:
-          console.warn(`[Queue] Unknown command: ${command}`);
+          debugLog(`[Queue] Unknown command: ${command}`);
           break;
       }
     }
@@ -160,13 +184,13 @@ export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
   // Keep Service Worker awake
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'heartbeat') {
-      console.debug('Service Worker Heartbeat...');
+      debugLog('Service Worker Heartbeat...');
     }
   });
 
   // Installation events and shortcuts
   chrome.runtime.onInstalled.addListener(() => {
-    console.log('Auto Script Extension Installed');
+    debugLog('Auto Script Extension Installed');
   });
 
   chrome.commands.onCommand.addListener((command) => {

@@ -20,11 +20,16 @@ export interface QueueHookConfig {
   keycard: string;
   getIdentifier: () => string | undefined;
   funcs: Funcs;
+  debug?: boolean;
 }
 
 export function useQueue(config: QueueHookConfig) {
   return function initQueue() {
-    const { keycard, getIdentifier, funcs } = config;
+    const { keycard, getIdentifier, funcs, debug = false } = config;
+
+    const debugLog = (...args: unknown[]) => {
+      if (debug) console.log(...args);
+    };
 
     const safeSendMessage = useCallback((msg: any, callback?: (resp: any) => void) => {
       try {
@@ -53,6 +58,7 @@ export function useQueue(config: QueueHookConfig) {
 
       if (needsSync) {
         lastInitializedRef.current = currentId;
+        debugLog(`[HOOK] SYNC: Initial sync for ${keycard}/${identifier || 'default'}`);
         // Perform initial SYNC with background
         safeSendMessage(
           {
@@ -63,11 +69,17 @@ export function useQueue(config: QueueHookConfig) {
           },
           (response: { tasks?: Task[]; status?: QueueStatus }) => {
             if (response) {
+              debugLog(
+                `[HOOK] SYNC: Response for ${keycard}/${identifier || 'default'}: ${response.tasks?.length || 0} tasks`
+              );
               if (response.tasks && response.tasks.length > 0) {
                 funcs.setTasks(response.tasks);
               } else {
                 const localTasks = funcs.getTasks();
                 if (localTasks.length > 0) {
+                  debugLog(
+                    `[HOOK] SYNC: No tasks in background, syncing ${localTasks.length} local tasks`
+                  );
                   safeSendMessage({
                     type: 'QUEUE_COMMAND',
                     command: QUEUE_COMMAND.ADD_MANY,
@@ -99,7 +111,9 @@ export function useQueue(config: QueueHookConfig) {
 
           switch (event) {
             case 'TASKS_UPDATED': {
-              console.log('TASKS_UPDATED', data);
+              debugLog(
+                `[HOOK] EVENT: TASKS_UPDATED for ${keycard}/${identifier || 'default'}, count: ${data.tasks?.length || 0}`
+              );
               const updates: Record<string, Partial<Task>> = {};
               data.tasks.forEach((t: Task) => {
                 updates[t.id] = t;
@@ -110,9 +124,13 @@ export function useQueue(config: QueueHookConfig) {
               break;
             }
             case 'PENDING_COUNT_CHANGED':
+              debugLog(
+                `[HOOK] EVENT: PENDING_COUNT_CHANGED for ${keycard}/${identifier || 'default'}: ${data.count}`
+              );
               funcs.setPendingCount(data.count);
               break;
             case 'HISTORY_ADDED':
+              debugLog(`[HOOK] EVENT: HISTORY_ADDED for ${keycard}/${identifier || 'default'}`);
               if (funcs.addHistoryTask) {
                 funcs.addHistoryTask(data.task);
               }
@@ -148,63 +166,85 @@ export function useQueue(config: QueueHookConfig) {
 
     const addTask = useCallback(
       async (task: Task) => {
+        debugLog(
+          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${getIdentifier() || 'default'}`
+        );
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
-      [sendQueueCommand, funcs]
+      [sendQueueCommand, funcs, debugLog]
     );
 
     const start = useCallback(async () => {
-      console.log(QUEUE_COMMAND.START);
+      debugLog(`[HOOK] START queue ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.START);
-    }, [sendQueueCommand, funcs]);
+    }, [sendQueueCommand, funcs, debugLog]);
 
     const stop = useCallback(async () => {
-      console.log(QUEUE_COMMAND.STOP);
+      debugLog(`[HOOK] STOP queue ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.STOP);
-    }, [sendQueueCommand, funcs]);
+    }, [sendQueueCommand, funcs, debugLog]);
 
     const pause = useCallback(async () => {
+      debugLog(`[HOOK] PAUSE queue ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.PAUSE);
-    }, [sendQueueCommand]);
+    }, [sendQueueCommand, debugLog]);
 
     const resume = useCallback(async () => {
+      debugLog(`[HOOK] RESUME queue ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.RESUME);
-    }, [sendQueueCommand]);
+    }, [sendQueueCommand, debugLog]);
 
     const clear = useCallback(async () => {
+      debugLog(`[HOOK] CLEAR queue ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.CLEAR);
-    }, [sendQueueCommand]);
+    }, [sendQueueCommand, debugLog]);
 
     const getStatus = useCallback(async () => {
+      debugLog(`[HOOK] GET_STATUS from ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_STATUS);
-    }, [sendQueueCommand]);
+    }, [sendQueueCommand, debugLog]);
 
     const getTasks = useCallback(async () => {
+      debugLog(`[HOOK] GET_TASKS from ${keycard}/${getIdentifier() || 'default'}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_TASKS);
-    }, [sendQueueCommand]);
+    }, [sendQueueCommand, debugLog]);
 
     const cancelTask = useCallback(
       async (taskId: string) => {
+        debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${getIdentifier() || 'default'}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASK, { taskId });
       },
-      [sendQueueCommand]
+      [sendQueueCommand, debugLog]
     );
 
     const cancelTasks = useCallback(
       async (taskIds: string[]) => {
+        debugLog(
+          `[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier() || 'default'}`
+        );
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
       },
-      [sendQueueCommand]
+      [sendQueueCommand, debugLog]
     );
 
-    const setTaskConfig = useCallback((taskConfig: TaskConfig) => {
-      return sendQueueCommand(QUEUE_COMMAND.SET_TASK_CONFIG, { taskConfig });
-    }, []);
+    const setTaskConfig = useCallback(
+      (taskConfig: TaskConfig) => {
+        debugLog(
+          `[HOOK] SET_TASK_CONFIG for ${keycard}/${getIdentifier() || 'default'}:`,
+          taskConfig
+        );
+        return sendQueueCommand(QUEUE_COMMAND.SET_TASK_CONFIG, { taskConfig });
+      },
+      [sendQueueCommand, debugLog]
+    );
 
     // --- HIGH LEVEL ACTIONS ---
 
     const publishTasks = useCallback(
       async (tasks: Task[]) => {
+        debugLog(
+          `[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${getIdentifier() || 'default'}`
+        );
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
@@ -213,12 +253,15 @@ export function useQueue(config: QueueHookConfig) {
           })),
         });
       },
-      [funcs, sendQueueCommand]
+      [funcs, sendQueueCommand, debugLog]
     );
 
     const deleteTasks = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
+        debugLog(
+          `[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier() || 'default'}`
+        );
 
         // 1. Cancel in background
         await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
@@ -226,12 +269,15 @@ export function useQueue(config: QueueHookConfig) {
         // 2. Delete from store
         funcs.deleteTasks(taskIds);
       },
-      [funcs, sendQueueCommand]
+      [funcs, sendQueueCommand, debugLog]
     );
 
     const skipTaskIds = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
+        debugLog(
+          `[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier() || 'default'}`
+        );
 
         // 1. Cancel in background if they are currently active
         await sendQueueCommand('CANCEL_TASKS', { taskIds });
@@ -243,13 +289,16 @@ export function useQueue(config: QueueHookConfig) {
         });
         funcs.updateTasks(updates);
       },
-      [funcs, sendQueueCommand]
+      [funcs, sendQueueCommand, debugLog]
     );
 
     const retryTasks = useCallback(
       async (taskIds: string[]) => {
         const tasks = funcs.getTasks().filter((t) => taskIds.includes(t.id));
         if (tasks.length === 0) return;
+        debugLog(
+          `[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier() || 'default'}`
+        );
 
         // 1. Reset tasks in store
         tasks.forEach((task) => {
@@ -270,7 +319,7 @@ export function useQueue(config: QueueHookConfig) {
           })),
         });
       },
-      [funcs, sendQueueCommand]
+      [funcs, sendQueueCommand, debugLog]
     );
 
     return {
