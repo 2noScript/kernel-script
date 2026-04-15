@@ -1,0 +1,35 @@
+{
+  "name": "ts-lib-boilerplate",
+  "module": "src/index.ts",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch run src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "release": "bun run build && bunx bumpp --push"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.14",
+    "bumpp": "^10",
+    "eslint": "^9",
+    "globals": "^15",
+    "prettier": "^3",
+    "react": "^19.2.5",
+    "typescript-eslint": "^8"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@types/chrome": "^0.1.40",
+    "p-queue": "^9.1.2",
+    "sonner": "^2.0.7",
+    "zustand": "^5.0.12"
+  }
+}
