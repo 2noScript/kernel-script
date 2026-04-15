@@ -16,7 +16,7 @@ jobs:
       - run: bun install
       - run: bun run lint
       - run: bun run build
-      - run: bunx bumpp --push
+      - run: bunx bumpp --push --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

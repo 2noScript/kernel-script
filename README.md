@@ -1,6 +1,71 @@
-# kernel-script
+# @2noscript/kernel-script
+
+[npm-version]: https://npmjs.org/package/@2noscript/kernel-script
+[npm-downloads]: https://npmjs.org/package/@2noscript/kernel-script
+[license]: https://mit-license.org
+[license-url]: LICENSE
+
+[![npm version](https://img.shields.io/npm/v/@2noscript/kernel-script.svg?style=flat-square)](https://npmjs.org/package/@2noscript/kernel-script)
+[![npm downloads](https://img.shields.io/npm/dm/@2noscript/kernel-script.svg?style=flat-square)](https://npmjs.org/package/@2noscript/kernel-script)
+[![license](https://img.shields.io/npm/l/@2noscript/kernel-script.svg?style=flat-square)](LICENSE)
 
 Task queue manager for Chrome extensions with background processing, persistence, and React hooks.
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Basic Setup](#basic-setup)
+  - [React Hook](#react-hook)
+  - [Advanced](#advanced)
+- [API Reference](#api-reference)
+  - [Core](#core)
+  - [Hooks](#hooks)
+  - [Store](#store)
+  - [Queue Operations](#queue-operations)
+- [Types](#types)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Quick Start
+
+```bash
+npm install @2noscript/kernel-script
+# or
+bun add @2noscript/kernel-script
+```
+
+```typescript
+import {
+  setupBackgroundEngine,
+  registerAllEngines,
+  useQueue,
+  createTaskStore,
+} from '@2noscript/kernel-script';
+
+// 1. Define your engine
+const myEngine = {
+  keycard: 'my-platform',
+  execute: async (ctx) => {
+    // Your automation logic here
+    return { success: true, output: 'Done' };
+  },
+};
+
+// 2. Initialize in background script
+setupBackgroundEngine({ 'my-platform': myEngine });
+
+// 3. Use in React component
+const store = createTaskStore({ name: 'my-tasks' });
+const { start, pause, tasks, pendingCount } = useQueue({
+  keycard: 'my-platform',
+  funcs: store,
+});
+```
 
 ## Features
 
@@ -13,270 +78,84 @@ Task queue manager for Chrome extensions with background processing, persistence
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        UI (React)                               │
-│  ┌──────────────────┐    ┌─────────────────────────────────┐   │
-│  │  TaskStore       │    │  use-*-queue.ts                 │   │
-│  │  (Zustand)       │◄───│  (queue-hook.ts)                │   │
-│  └──────────────────┘    └──────────────┬──────────────────┘   │
-└──────────────────────────────────────────┼──────────────────────┘
-                                            │ chrome.runtime.sendMessage
-                                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Background (Service Worker)                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              QueueManager (p-queue)                     │   │
-│  │  - Scheduling                                            │   │
-│  │  - Concurrency                                          │   │
-│  │  - Lifecycle management                                 │   │
-│  └──────────────┬───────────────────────────┬───────────────┘   │
-│                 │                           │                   │
-│                 ▼                           ▼                   │
-│  ┌─────────────────────┐        ┌────────────────────────┐     │
-│  │   EngineHub         │        │  PersistenceManager    │     │
-│  │   (Router)          │        │  (IndexedDB)           │     │
-│  └──────────┬──────────┘        └────────────────────────┘     │
-│             │                                                   │
-│             ▼                                                   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    Engines                               │   │
-│  │  fxImageGenEngine │ bingEngine │ metaAiEngine...        │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+### Data Flow
+
+```mermaid
+graph LR
+    A[User] --> B[React Store]
+    B --> C[sendMessage]
+    C --> D[QueueManager]
+    D --> E[EngineHub]
+    D --> F[PersistenceManager]
+    E --> G[Engines]
+    F --> H[IndexedDB]
 ```
 
-## Task Processing Flow
+### Components
 
-### 1. Create Task
+| Layer | Component           | Description                          |
+| ----- | ------------------- | ------------------------------------ |
+| UI    | TaskStore (Zustand) | Local state management               |
+| UI    | useQueue Hook       | React hook interface                 |
+| BG    | QueueManager        | Task scheduling, concurrency control |
+| BG    | EngineHub           | Engine router/registry               |
+| BG    | PersistenceManager  | IndexedDB persistence                |
+| BG    | Engines             | Task executors                       |
 
-```typescript
-const task = {
-  id: 'task-001',
-  type: 'image',
-  name: 'Generate cat image',
-  status: 'Waiting',
-  progress: 0,
-  payload: { prompt: 'a cat' },
-};
+### Task Flows
 
-await addTask(task);
+#### Task Execution Flow
+
+```mermaid
+graph LR
+    A[User creates task] --> B[Store.update]
+    B --> C[sendMessage ADD]
+    C --> D[QueueManager.add]
+    D --> E[EngineHub.get]
+    E --> F[Engine.execute]
+    F --> G[Result]
+    G --> H[QUEUE_EVENT]
+    H --> I[Store.setTasks]
 ```
 
-Flow:
+### Task Lifecycle
 
-1. UI calls `addTask(task)` → `funcs.updateTask()` updates local store
-2. Send `QUEUE_COMMAND` message with command `ADD` to Background
-
-### 2. Receive Command
-
-```typescript
-switch (command) {
-  case 'ADD':
-    await queueManager.add(platformId, identifier, task);
-    break;
-  case 'ADD_MANY':
-    await queueManager.addMany(platformId, identifier, tasks);
-    break;
-  case 'START':
-    queueManager.start(platformId, identifier);
-    break;
-}
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Waiting: add()
+    Waiting --> Running: start()
+    Running --> Completed: success
+    Running --> Error: failed
+    Error --> Waiting: retryTasks
+    Completed --> [*]
+    Error --> [*]
 ```
 
-### 3. QueueManager Processing
+### Persistence & Hydration
 
-```typescript
-async add(platformId, identifier, task) {
-  const entry = getOrCreateQueue(platformId, identifier);
-  tasks.push(task);
+| Event           | Action                                                |
+| --------------- | ----------------------------------------------------- |
+| Browser restart | Service Worker restarts                               |
+| Hydrate         | Load queue state from IndexedDB                       |
+| RehydrateTasks  | Scan tasks, reset Running to Waiting, re-add to queue |
 
-  if (task.status === "Waiting" && !queuedIds.has(task.id)) {
-    task.isQueued = true;
-    queuedIds.add(task.id);
-    queue.add(() => processTask(platformId, identifier, task));
-  }
+### Message Flow
 
-  updateTasks(platformId, identifier, tasks);
-  notifyStatusChange(platformId, identifier);
-}
+```mermaid
+sequenceDiagram
+    participant UI as UI (React)
+    participant BG as Background SW
+
+    UI->>BG: QUEUE_COMMAND: ADD
+    BG->>BG: queueManager.add()
+    BG->>BG: processTask()
+    BG->>BG: engine.execute()
+    BG-->>UI: QUEUE_EVENT: TASKS_UPDATED
+    UI->>UI: setTasks(tasks)
 ```
 
-### 4. Task Processing
-
-```typescript
-private async processTask(platformId, identifier, task) {
-  const engine = engineHub.get(platformId);
-
-  const taskIndex = entry.tasks.findIndex(t => t.id === task.id);
-  entry.tasks[taskIndex].status = "Running";
-  updateTasks(platformId, identifier, entry.tasks);
-
-  try {
-    const result = await engine.execute(task);
-    if (result.success) {
-      entry.tasks[idx].status = "Completed";
-      entry.tasks[idx].output = result.output;
-    } else {
-      entry.tasks[idx].status = "Error";
-      entry.tasks[idx].errorMessage = result.error;
-    }
-  } catch (error) {
-    entry.tasks[idx].status = "Error";
-    entry.tasks[idx].errorMessage = error.message;
-  }
-
-  entry.queuedIds.delete(task.id);
-
-  if (queue.size === 0 && queue.pending === 0) {
-    opts.forEach(opt => opt.onQueueEmpty(...));
-  }
-}
-```
-
-### 5. Engine Execution
-
-```typescript
-interface BaseEngine {
-  execute(task: Task): Promise<EngineResult>;
-  cancel(taskId: string): void;
-}
-
-async execute(task: Task): Promise<EngineResult> {
-  try {
-    const tab = await chrome.tabs.create({ url: task.payload.url });
-    await this.runAutomation(tab.id, task);
-    const output = await this.getResult(tab.id);
-    return { success: true, output };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-```
-
-### 6. Sync Back to UI
-
-```typescript
-const handleMessage = (message) => {
-  if (message.type === 'QUEUE_EVENT') {
-    switch (event) {
-      case 'TASKS_UPDATED':
-        funcs.setTasks(data.tasks);
-        funcs.setPendingCount(data.status.size + data.status.pending);
-        break;
-    }
-  }
-};
-```
-
-## Task Lifecycle
-
-```
-┌─────────┐     add()     ┌─────────┐    start()    ┌─────────┐
-│  Draft  │ ───────────►  │ Waiting │ ──────────►  │ Running │
-└─────────┘               └─────────┘               └────┬────┘
-                                                          │
-                         ┌────────────────────────────────┤
-                         ▼                                ▼
-                  ┌──────────────┐               ┌──────────────┐
-                  │ Completed   │               │    Error     │
-                  └──────────────┘               └──────────────┘
-                                                ▲
-                                                │
-                                          retryTasks()
-                                                │
-                                                └──────────► Waiting
-```
-
-## Persistence & Hydration
-
-| Event               | Action                                                   |
-| ------------------- | -------------------------------------------------------- |
-| **Browser restart** | Service Worker restarts                                  |
-| **Hydrate**         | Load queue state from IndexedDB                          |
-| **RehydrateTasks**  | Scan tasks, reset "Running" → "Waiting", re-add to queue |
-
-## Installation
-
-```bash
-npm install kernel-script
-# or
-bun add kernel-script
-```
-
-## Usage
-
-### Basic Setup
-
-```typescript
-import { setupBackgroundEngine, registerAllEngines } from 'kernel-script';
-import type { BaseEngine } from 'kernel-script';
-
-// Define your engine
-const myEngine: BaseEngine = {
-  keycard: 'my-platform',
-  async execute(ctx) {
-    // Your task execution logic
-    return { success: true, output: 'Done' };
-  },
-};
-
-// Initialize in background script
-setupBackgroundEngine({ 'my-platform': myEngine });
-```
-
-### Using React Hook
-
-```typescript
-import { useQueue, createTaskStore } from 'kernel-script';
-
-// Create store
-const store = createTaskStore({ name: 'my-tasks' });
-
-// Use in component
-const MyComponent = () => {
-  const queue = useQueue({
-    keycard: 'my-platform',
-    getIdentifier: () => store.getIdentifier?.(),
-    funcs: {
-      getTasks: store.getTasks,
-      setTasks: store.setTasks,
-      // ...other funcs
-    }
-  })();
-
-  const handleStart = () => queue.start();
-
-  return <button onClick={handleStart}>Start Queue</button>;
-};
-```
-
-## API
-
-### Core
-
-| Export                    | Description                                  |
-| ------------------------- | -------------------------------------------- |
-| `QueueManager`            | Main queue manager class                     |
-| `getQueueManager()`       | Get queue manager singleton                  |
-| `TaskContext`             | Context for task execution with abort signal |
-| `setupBackgroundEngine()` | Initialize background engine                 |
-| `engineHub`               | Engine registry                              |
-| `persistenceManager`      | Persistence layer                            |
-
-### Hooks
-
-| Hook       | Description                     |
-| ---------- | ------------------------------- |
-| `useQueue` | React hook for queue operations |
-
-### Store
-
-| Function          | Description                    |
-| ----------------- | ------------------------------ |
-| `createTaskStore` | Create Zustand store for tasks |
-
-### Queue Operations
+### Main Operations
 
 | Operation         | Description                   |
 | ----------------- | ----------------------------- |
@@ -286,68 +165,232 @@ const MyComponent = () => {
 | `pause()`         | Pause (don't cancel tasks)    |
 | `resume()`        | Resume processing             |
 | `stop()`          | Stop + halt all running tasks |
-| `haltTask(id)`    | Halt 1 task → Waiting         |
+| `haltTask(id)`    | Halt 1 task to Waiting        |
 | `cancelTask(id)`  | Cancel completely from list   |
 | `retryTasks(ids)` | Retry failed tasks            |
 
-## Message Flow
+## Installation
 
-```
-UI (React)                    Background (SW)
-     │                               │
-     │  QUEUE_COMMAND: ADD           │
-     ├──────────────────────────────►│
-     │                               │ queueManager.add()
-     │                               │   │
-     │                               │   ▼
-     │                               │ processTask()
-     │                               │   │
-     │  QUEUE_EVENT: TASKS_UPDATED   │   │ (after execute)
-     │◄──────────────────────────────┤   │
-     │                               │   ▼
-     │                               │ engine.execute()
-     │                               │   │
-     │                               ▼   │
-     │ setTasks(tasks)              │ EngineResult
-     │ (Zustand update)             │   │
+```bash
+npm install @2noscript/kernel-script
+# or
+bun add @2noscript/kernel-script
 ```
 
-### Types
+## Usage
 
-| Type           | Description             |
-| -------------- | ----------------------- |
-| `Task`         | Task definition         |
-| `TaskConfig`   | Queue configuration     |
-| `QueueStatus`  | Queue status            |
-| `BaseEngine`   | Engine interface        |
-| `EngineResult` | Engine execution result |
+### Basic Setup
 
-## Scripts
+```typescript
+import { setupBackgroundEngine, registerAllEngines } from '@2noscript/kernel-script';
+import type { BaseEngine, Task, EngineResult } from '@2noscript/kernel-script';
 
-| Script            | Description                    |
-| ----------------- | ------------------------------ |
-| `npm run dev`     | Run dev mode                   |
-| `npm run build`   | Build to `dist/` folder        |
-| `npm run lint`    | ESLint code check              |
-| `npm run format`  | Prettier code format           |
-| `npm run release` | Build + bump version + git tag |
+// Define your custom engine
+const myEngine: BaseEngine = {
+  keycard: 'my-platform',
 
-## Project Structure
+  async execute(ctx: Task): Promise<EngineResult> {
+    try {
+      const tab = await chrome.tabs.create({ url: ctx.payload.url });
+      await this.runAutomation(tab.id, ctx);
+      const output = await this.getResult(tab.id);
+      return { success: true, output };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
 
+  cancel(taskId: string): void {
+    // Cancel logic here
+  },
+};
+
+// Initialize in your background script
+setupBackgroundEngine({ 'my-platform': myEngine });
+
+// Optionally register all built-in engines
+registerAllEngines();
 ```
-src/
-├── core/              # Core library code
-│   ├── queue-manager.ts
-│   ├── task-context.ts
-│   ├── persistence-manager.ts
-│   ├── engine-hub.ts
-│   ├── bootstrap.ts
-│   ├── hooks/         # React hooks
-│   └── store/         # Zustand stores
-└── index.ts           # Main exports
-dist/                  # Build output
+
+### React Hook
+
+```typescript
+import { useQueue, createTaskStore } from '@2noscript/kernel-script';
+
+// Create a task store
+const taskStore = createTaskStore({ name: 'my-tasks' });
+
+// Use in your component
+function TaskQueue() {
+  const { start, pause, resume, stop, tasks, pendingCount, runningCount } = useQueue({
+    keycard: 'my-platform',
+    funcs: taskStore,
+  });
+
+  return (
+    <div>
+      <h2>Tasks: {tasks.length}</h2>
+      <p>Pending: {pendingCount} | Running: {runningCount}</p>
+      <button onClick={start}>Start</button>
+      <button onClick={pause}>Pause</button>
+      <button onClick={resume}>Resume</button>
+      <button onClick={stop}>Stop</button>
+    </div>
+  );
+}
 ```
+
+### Advanced
+
+```typescript
+import { getQueueManager, TaskConfig } from '@2noscript/kernel-script';
+
+// Get queue manager instance
+const queueManager = getQueueManager();
+
+// Configure queue
+const config: TaskConfig = {
+  threads: 3,
+  delayMin: 1000,
+  delayMax: 5000,
+  stopOnErrorCount: 5,
+};
+
+// Add tasks
+await queueManager.add('my-platform', 'default', {
+  id: 'task-001',
+  no: 1,
+  name: 'Generate cat image',
+  status: 'Waiting',
+  progress: 0,
+  payload: { prompt: 'a cute cat' },
+});
+
+// Add multiple tasks
+await queueManager.addMany('my-platform', 'default', [
+  { id: 'task-002', no: 2, name: 'Task 2', status: 'Waiting', progress: 0, payload: {} },
+  { id: 'task-003', no: 3, name: 'Task 3', status: 'Waiting', progress: 0, payload: {} },
+]);
+
+// Start processing
+queueManager.start('my-platform', 'default');
+```
+
+## API Reference
+
+### Core
+
+| Export                           | Description                                  |
+| -------------------------------- | -------------------------------------------- |
+| `QueueManager`                   | Main queue manager class                     |
+| `getQueueManager()`              | Get queue manager singleton                  |
+| `TaskContext`                    | Context for task execution with abort signal |
+| `setupBackgroundEngine(engines)` | Initialize background engine                 |
+| `engineHub`                      | Engine registry                              |
+| `persistenceManager`             | Persistence layer                            |
+| `registerAllEngines()`           | Register all built-in engines                |
+| `sleep(ms)`                      | Promise-based sleep function                 |
+
+### Hooks
+
+| Hook               | Description                     | Usage                          |
+| ------------------ | ------------------------------- | ------------------------------ |
+| `useQueue(config)` | React hook for queue operations | `useQueue({ keycard, funcs })` |
+
+### Store
+
+| Function                   | Description                    |
+| -------------------------- | ------------------------------ |
+| `createTaskStore(options)` | Create Zustand store for tasks |
+
+### Queue Operations
+
+| Operation                                     | Description                   |
+| --------------------------------------------- | ----------------------------- |
+| `add(platformId, identifier, task)`           | Add 1 task to queue           |
+| `addMany(platformId, identifier, tasks)`      | Add multiple tasks            |
+| `start(platformId, identifier)`               | Start processing queue        |
+| `pause(platformId, identifier)`               | Pause (don't cancel tasks)    |
+| `resume(platformId, identifier)`              | Resume processing             |
+| `stop(platformId, identifier)`                | Stop + halt all running tasks |
+| `getStatus(platformId, identifier)`           | Get queue status              |
+| `retryTasks(platformId, identifier, taskIds)` | Retry failed tasks            |
+
+## Types
+
+```typescript
+// Task status
+type TaskStatus = 'Draft' | 'Waiting' | 'Running' | 'Completed' | 'Error' | 'Previous' | 'Skipped';
+
+// Task definition
+interface Task {
+  id: string;
+  no: number;
+  name: string;
+  status: TaskStatus;
+  progress: number;
+  payload: Record<string, any>;
+  output?: unknown;
+  errorMessage?: string;
+  isQueued?: boolean;
+  isFlagged?: boolean;
+  createAt?: number;
+  updateAt?: number;
+}
+
+// Queue configuration
+interface TaskConfig {
+  threads: number;
+  delayMin: number;
+  delayMax: number;
+  stopOnErrorCount: number;
+}
+
+// Engine interface
+interface BaseEngine {
+  keycard: string;
+  execute(ctx: Task): Promise<EngineResult>;
+  cancel(taskId: string): void;
+}
+
+// Engine result
+interface EngineResult {
+  success: boolean;
+  output?: unknown;
+  error?: string;
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Q: Tasks not executing after adding**
+A: Make sure to call `start(platformId, identifier)` after adding tasks.
+
+**Q: Queue not persisting after extension restart**
+A: Verify `persistenceManager` is initialized. Check IndexedDB permissions.
+
+**Q: React hook not updating**
+A: Ensure your store is passed correctly to `useQueue` funcs parameter.
+
+**Q: Engine not found**
+A: Register your engine with `setupBackgroundEngine()` before using it.
+
+**Q: "Cannot read property X of undefined"**
+A: Ensure you're importing from `dist/` after building: `import { ... } from '@2noscript/kernel-script'`
+
+**Q: TypeScript errors on import**
+A: Make sure to install peer dependencies: `npm install react react-dom`
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes
+4. Run tests: `bun run build`
+5. Submit a pull request
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
