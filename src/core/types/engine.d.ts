@@ -1,4 +1,4 @@
-import type { Task } from '@/core/task';
+import type { Task } from '@/core/types/task';
 import type { TaskContext } from '@/core/task-context';
 
 export type EngineResult = {

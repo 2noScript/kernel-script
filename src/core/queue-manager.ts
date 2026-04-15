@@ -1,6 +1,6 @@
 import PQueue from 'p-queue';
-import type { Task, TaskConfig } from '@/core/task';
-import type { BaseEngine, EngineResult } from '@/core/engine';
+import type { Task, TaskConfig } from '@/core/types/task';
+import type { BaseEngine, EngineResult } from '@/core/types/engine';
 import { persistenceManager, type SerializedQueueState } from '@/core/persistence-manager';
 import { engineHub } from '@/core/engine-hub';
 import { TaskContext } from '@/core/task-context';

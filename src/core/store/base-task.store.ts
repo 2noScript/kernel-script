@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { Task, TaskConfig } from '@/core/task';
+import type { Task, TaskConfig } from '@/core/types/task';
 
 export interface TaskStoreState {
   tasks: Task[];
@@ -9,6 +9,7 @@ export interface TaskStoreState {
   isPaused: boolean;
   selectedIds: string[];
   generating: boolean;
+  taskConfig: TaskConfig;
   getTasks: () => Task[];
   setTasks: (tasks: Task[]) => void;
   setPendingCount: (count: number) => void;
@@ -29,8 +30,7 @@ export interface TaskStoreState {
   getIsPaused: () => boolean;
   getGenerating: () => boolean;
   getTaskConfig: () => TaskConfig;
-  taskConfig: TaskConfig;
-  updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) => void;
+  updateTaskConfig: (updates: Partial<TaskConfig>) => void;
 }
 
 export interface CreateTaskStoreOptions<T extends object> {

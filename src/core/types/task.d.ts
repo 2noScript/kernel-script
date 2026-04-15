@@ -1,6 +1,5 @@
 export type Task = {
   id: string;
-  type: "image" | "video";
   no: number;
   name: string;
   status:

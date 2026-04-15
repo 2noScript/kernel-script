@@ -1,5 +1,5 @@
 import { QUEUE_COMMAND } from '@/core/commands';
-import type { BaseEngine } from '@/core/engine';
+import type { BaseEngine } from '@/core/types/engine';
 import { getQueueManager } from '@/core/queue-manager';
 import { registerAllEngines } from '@/core/registry';
 

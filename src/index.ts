@@ -1,6 +1,6 @@
 export * from '@/core/queue-manager';
 export * from '@/core/task-context';
-export * from '@/core/task.d';
+export * from '@/core/types/task';
 export * from '@/core/commands';
 export * from '@/core/store/base-task.store';
 export { useQueue } from '@/core/hooks/use-queue';
