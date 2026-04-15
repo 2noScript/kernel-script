@@ -1,33 +1,14 @@
-export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+export const sleep = (seconds: number, signal?: AbortSignal): Promise<void> => {
+  return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-        signal.throwIfAborted();
+      return reject(new Error("CANCELLED"));
     }
 
-    await new Promise((resolve, reject) => {
-        const abortHandler = () => {
-            reject(new DOMException('Sleep aborted', 'AbortError'));
-        };
+    const timeout = setTimeout(resolve, seconds);
 
-        if (signal) {
-            signal.addEventListener('abort', abortHandler, { once: true });
-        }
-
-        const timeoutId = setTimeout(() => {
-            if (signal) {
-                signal.removeEventListener('abort', abortHandler);
-            }
-            resolve(undefined);
-        }, ms);
-
-        if (signal) {
-            signal.addEventListener(
-                'abort',
-                () => {
-                    clearTimeout(timeoutId);
-                    reject(new DOMException('Sleep aborted', 'AbortError'));
-                },
-                { once: true }
-            );
-        }
-    });
-}
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timeout);
+      reject(new Error("CANCELLED"));
+    }, { once: true });
+  });
+};

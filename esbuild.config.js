@@ -28,6 +28,7 @@ await esbuild.build({
   sourcemap: false,
   minify: false,
   target: ['es2020'],
+  external: ['react', 'react-dom', 'zustand'],
   plugins: [aliasPlugin],
 });
 
@@ -41,5 +42,6 @@ await esbuild.build({
   sourcemap: false,
   minify: false,
   target: ['es2020'],
+  external: ['react', 'react-dom', 'zustand'],
   plugins: [aliasPlugin],
 });
