@@ -1,0 +1,16 @@
+# Development files
+src/
+scripts/
+esbuild.config.js
+tsconfig.json
+tsconfig.build.json
+eslint.config.js
+.prettierrc
+.prettierrc.json
+AGENTS.md
+.git/
+.vscode/
+.DS_Store
+
+# Dependencies (đã có trong package.json)
+node_modules/
