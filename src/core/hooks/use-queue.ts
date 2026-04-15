@@ -7,8 +7,8 @@ interface Funcs {
   getTasks: () => Task[];
   setTasks: (tasks: Task[]) => void;
   setPendingCount: (count: number) => void;
-  setIsPaused: (paused: boolean) => void;
-  getIsPaused: () => boolean;
+  setIsRunning: (running: boolean) => void;
+  getIsRunning: () => boolean;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTasks: (taskIds: string[]) => void;
   updateTasks: (updates: Record<string, Partial<Task>>) => void;
@@ -92,7 +92,7 @@ export function useQueue(config: QueueHookConfig) {
 
               if (response.status) {
                 funcs.setPendingCount(response.status.size + response.status.pending);
-                funcs.setIsPaused(response.status.isPaused);
+                funcs.setIsRunning(response.status.isRunning);
               }
             }
           }
@@ -120,7 +120,7 @@ export function useQueue(config: QueueHookConfig) {
               });
               funcs.updateTasks(updates);
               funcs.setPendingCount(data.status.size + data.status.pending);
-              funcs.setIsPaused(data.status.isPaused);
+              funcs.setIsRunning(data.status.isRunning);
               break;
             }
             case 'PENDING_COUNT_CHANGED':

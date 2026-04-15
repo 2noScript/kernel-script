@@ -6,14 +6,13 @@ export interface TaskStoreState {
   tasks: Task[];
   taskHistory: Task[];
   pendingCount: number;
-  isPaused: boolean;
+  isRunning: boolean;
   selectedIds: string[];
-  generating: boolean;
   taskConfig: TaskConfig;
   getTasks: () => Task[];
   setTasks: (tasks: Task[]) => void;
   setPendingCount: (count: number) => void;
-  setIsPaused: (paused: boolean) => void;
+  setIsRunning: (running: boolean) => void;
   addTask: (task: Task) => void;
   addTasks: (tasks: Task[]) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
@@ -26,9 +25,7 @@ export interface TaskStoreState {
   toggleSelectAll: (ids?: string[]) => void;
   setSelectedIds: (ids: string[]) => void;
   clearSelected: () => void;
-  setGenerating: (generating: boolean) => void;
-  getIsPaused: () => boolean;
-  getGenerating: () => boolean;
+  getIsRunning: () => boolean;
   getTaskConfig: () => TaskConfig;
   updateTaskConfig: (updates: Partial<TaskConfig>) => void;
 }
@@ -47,7 +44,7 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
     tasks: [] as Task[],
     taskHistory: [] as Task[],
     pendingCount: 0,
-    isPaused: true,
+    isRunning: false,
     taskConfig: {
       threads: 1,
       delayMin: 1,
@@ -62,14 +59,13 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
         (set, get) => ({
           ...baseState,
           selectedIds: [] as string[],
-          generating: false,
           getTasks: () => get().tasks,
           setTasks: (tasks: Task[]) => {
             const uniqueTasks = Array.from(new Map(tasks.map((t: Task) => [t.id, t])).values());
             set({ tasks: uniqueTasks });
           },
           setPendingCount: (count: number) => set({ pendingCount: count }),
-          setIsPaused: (paused: boolean) => set({ isPaused: paused }),
+          setIsRunning: (running: boolean) => set({ isRunning: running }),
           addTask: (task: Task) =>
             set((state: any) => {
               if (state.tasks.some((t: Task) => t.id === task.id)) return state;
@@ -150,9 +146,7 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
             }),
           setSelectedIds: (ids: string[]) => set({ selectedIds: ids }),
           clearSelected: () => set({ selectedIds: [] }),
-          setGenerating: (generating: boolean) => set({ generating }),
-          getIsPaused: () => get().isPaused,
-          getGenerating: () => get().generating,
+          getIsRunning: () => get().isRunning,
           getTaskConfig: () => get().taskConfig,
           updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) =>
             set((state: any) => ({
@@ -184,14 +178,13 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
   return create<any>()((set, get) => ({
     ...baseState,
     selectedIds: [] as string[],
-    generating: false,
     getTasks: () => get().tasks,
     setTasks: (tasks: Task[]) => {
       const uniqueTasks = Array.from(new Map(tasks.map((t: Task) => [t.id, t])).values());
       set({ tasks: uniqueTasks });
     },
     setPendingCount: (count: number) => set({ pendingCount: count }),
-    setIsPaused: (paused: boolean) => set({ isPaused: paused }),
+    setIsRunning: (running: boolean) => set({ isRunning: running }),
     addTask: (task: Task) =>
       set((state: any) => {
         if (state.tasks.some((t: Task) => t.id === task.id)) return state;
@@ -254,9 +247,7 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
       }),
     setSelectedIds: (ids: string[]) => set({ selectedIds: ids }),
     clearSelected: () => set({ selectedIds: [] }),
-    setGenerating: (generating: boolean) => set({ generating }),
-    getIsPaused: () => get().isPaused,
-    getGenerating: () => get().generating,
+    getIsRunning: () => get().isRunning,
     updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) =>
       set((state: any) => ({
         taskConfig: { ...state.taskConfig, ...updates },

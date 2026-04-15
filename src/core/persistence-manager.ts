@@ -1,5 +1,4 @@
 export interface SerializedQueueState {
-  isPaused: boolean;
   isRunning: boolean;
 }
 

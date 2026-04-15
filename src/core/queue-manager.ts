@@ -9,7 +9,6 @@ import { sleep } from '@/core/helper';
 export interface QueueStatus {
   size: number;
   pending: number;
-  isPaused: boolean;
   isRunning: boolean;
 }
 
@@ -71,7 +70,7 @@ export class QueueManager {
       .map((t) => `[${t.id}] ${t.status}${t.name ? ` (${t.name})` : ''}`)
       .join(', ');
     this.debugLog(
-      `[Queue] ${action} | Key: ${key} | Tasks: ${entry.tasks.length} | Queue size: ${entry.queue.size} | Pending: ${entry.queue.pending} | isPaused: ${entry.queue.isPaused} | Tasks: ${taskSummary}`
+      `[Queue] ${action} | Key: ${key} | Tasks: ${entry.tasks.length} | Queue size: ${entry.queue.size} | Pending: ${entry.queue.pending} | isRunning: ${!entry.queue.isPaused} | Tasks: ${taskSummary}`
     );
   }
 
@@ -391,8 +390,7 @@ export class QueueManager {
     return {
       size,
       pending,
-      isPaused: entry?.queue.isPaused || false,
-      isRunning: this.runningQueues.has(key),
+      isRunning: !entry?.queue.isPaused || this.runningQueues.has(key),
     };
   }
 
@@ -636,8 +634,7 @@ export class QueueManager {
     const status = {
       size: entry?.queue.size || 0,
       pending: entry?.queue.pending || 0,
-      isPaused: entry?.queue.isPaused || false,
-      isRunning: this.runningQueues.has(key),
+      isRunning: !entry?.queue.isPaused || this.runningQueues.has(key),
     };
 
     const opts = this.getOptions(keycard);
@@ -650,7 +647,6 @@ export class QueueManager {
     const states: Record<string, SerializedQueueState> = {};
     for (const [key, entry] of this.queues.entries()) {
       states[key] = {
-        isPaused: entry.queue.isPaused,
         isRunning: this.runningQueues.has(key),
       };
     }
@@ -682,7 +678,7 @@ export class QueueManager {
 
       const entry = this.getOrCreateQueue(keycard, identifier);
 
-      if (state.isPaused) {
+      if (!state.isRunning) {
         entry.queue.pause();
       } else {
         entry.queue.start();

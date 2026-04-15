@@ -24,7 +24,6 @@ export type TaskConfig = {
 export type QueueStatus = {
   size: number;
   pending: number;
-  isPaused: boolean;
   isRunning: boolean;
 };
 
@@ -56,6 +55,5 @@ export type BaseEngine = {
 };
 
 export type SerializedQueueState = {
-  isPaused: boolean;
   isRunning: boolean;
 };
