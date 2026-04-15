@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { Task, TaskConfig } from '@/core/types/task';
+import type { Task, TaskConfig } from '@/core/types';
 
 export interface TaskStoreState {
   tasks: Task[];

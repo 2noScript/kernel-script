@@ -1,0 +1,116 @@
+import { QUEUE_COMMAND } from '@/core/commands';
+import type { QueueManager } from '@/core/queue-manager';
+
+export interface CommandPayload {
+  command: string;
+  keycard: string;
+  identifier?: string;
+  payload: {
+    task?: any;
+    tasks?: any[];
+    taskId?: string;
+    taskIds?: string[];
+    taskConfig?: any;
+  };
+}
+
+export interface CommandHandlerDeps {
+  queueManager: QueueManager;
+  debug: boolean;
+  debugLog: (...args: unknown[]) => void;
+}
+
+export const createCommandHandler = ({ queueManager, debug, debugLog }: CommandHandlerDeps) => {
+  return async (message: CommandPayload) => {
+    const { command, keycard, identifier = '', payload } = message;
+
+    const handleAsyncCommand = async (promise: Promise<any>) => {
+      await promise;
+      return { success: true };
+    };
+
+    switch (command) {
+      case QUEUE_COMMAND.SYNC:
+        debugLog(`[BOOTSTRAP] SYNC from ${keycard}/${identifier || 'default'}`);
+        return {
+          tasks: queueManager.getTasks(keycard, identifier),
+          status: queueManager.getStatus(keycard, identifier),
+        };
+
+      case QUEUE_COMMAND.CANCEL_TASK:
+        debugLog(
+          `[BOOTSTRAP] CANCEL_TASK ${payload.taskId} from ${keycard}/${identifier || 'default'}`
+        );
+        handleAsyncCommand(queueManager.cancelTask(keycard, identifier, payload.taskId || ''));
+        return { async: true };
+
+      case QUEUE_COMMAND.CANCEL_TASKS:
+        debugLog(
+          `[BOOTSTRAP] CANCEL_TASKS ${payload.taskIds?.length} tasks from ${keycard}/${identifier || 'default'}`
+        );
+        handleAsyncCommand(
+          Promise.all(
+            (payload.taskIds || []).map((id: string) =>
+              queueManager.cancelTask(keycard, identifier, id)
+            )
+          )
+        );
+        return { async: true };
+
+      case QUEUE_COMMAND.ADD:
+        debugLog(
+          `[BOOTSTRAP] ADD task ${payload.task?.id} to ${keycard}/${identifier || 'default'}`
+        );
+        handleAsyncCommand(queueManager.add(keycard, identifier, payload.task!));
+        return { async: true };
+
+      case QUEUE_COMMAND.ADD_MANY:
+        debugLog(
+          `[BOOTSTRAP] ADD_MANY ${payload.tasks?.length} tasks to ${keycard}/${identifier || 'default'}`
+        );
+        handleAsyncCommand(queueManager.addMany(keycard, identifier, payload.tasks || []));
+        return { async: true };
+
+      case QUEUE_COMMAND.START:
+        debugLog(`[BOOTSTRAP] START queue ${keycard}/${identifier || 'default'}`);
+        handleAsyncCommand(queueManager.start(keycard, identifier));
+        return { async: true };
+
+      case QUEUE_COMMAND.STOP:
+        debugLog(`[BOOTSTRAP] STOP queue ${keycard}/${identifier || 'default'}`);
+        handleAsyncCommand(queueManager.stop(keycard, identifier));
+        return { async: true };
+
+      case QUEUE_COMMAND.PAUSE:
+        debugLog(`[BOOTSTRAP] PAUSE queue ${keycard}/${identifier || 'default'}`);
+        handleAsyncCommand(queueManager.pause(keycard, identifier));
+        return { async: true };
+
+      case QUEUE_COMMAND.RESUME:
+        debugLog(`[BOOTSTRAP] RESUME queue ${keycard}/${identifier || 'default'}`);
+        handleAsyncCommand(queueManager.resume(keycard, identifier));
+        return { async: true };
+
+      case QUEUE_COMMAND.CLEAR:
+        debugLog(`[BOOTSTRAP] CLEAR queue ${keycard}/${identifier || 'default'}`);
+        handleAsyncCommand(queueManager.clear(keycard, identifier));
+        return { async: true };
+
+      case QUEUE_COMMAND.GET_STATUS:
+        debugLog(`[BOOTSTRAP] GET_STATUS from ${keycard}/${identifier || 'default'}`);
+        return queueManager.getStatus(keycard, identifier);
+
+      case QUEUE_COMMAND.GET_TASKS:
+        debugLog(`[BOOTSTRAP] GET_TASKS from ${keycard}/${identifier || 'default'}`);
+        return { tasks: queueManager.getTasks(keycard, identifier) };
+
+      case QUEUE_COMMAND.SET_TASK_CONFIG:
+        queueManager.updateTaskConfig(keycard, identifier, payload.taskConfig);
+        return { success: true };
+
+      default:
+        debugLog(`[Queue] Unknown command: ${command}`);
+        return null;
+    }
+  };
+};

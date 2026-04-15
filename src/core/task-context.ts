@@ -1,5 +1,5 @@
 import { sleep } from '@/core/helper';
-import type { Task } from '@/core/types/task';
+import type { Task } from '@/core/types';
 
 export class TaskContext {
   public readonly task: Task;

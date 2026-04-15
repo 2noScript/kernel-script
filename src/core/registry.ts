@@ -1,4 +1,4 @@
-import type { BaseEngine } from '@/core/types/engine';
+import type { BaseEngine } from '@/core/types';
 import type { QueueManager } from '@/core/queue-manager';
 
 export function registerAllEngines(
