@@ -1,6 +1,7 @@
 {
-  "name": "ex-kernel-script",
+  "name": "kernel-script",
   "version": "0.0.0",
+  "description": "Task queue manager for Chrome extensions with background processing, persistence, and React hooks",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -10,6 +11,24 @@
     "import": "./dist/index.js",
     "require": "./dist/index.cjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2noScript/kernel-script.git"
+  },
+  "homepage": "https://github.com/2noScript/kernel-script#readme",
+  "bugs": {
+    "url": "https://github.com/2noScript/kernel-script/issues"
+  },
+  "author": "2noScript <thangmk7@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "chrome-extension",
+    "task-queue",
+    "queue-manager",
+    "automation",
+    "script-runner",
+    "background-tasks"
+  ],
   "scripts": {
     "dev": "bun --watch run src/index.ts",
     "build": "tsc -p tsconfig.build.json && node esbuild.config.js",
