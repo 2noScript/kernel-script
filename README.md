@@ -1,13 +1,13 @@
-# @2noscript/kernel-script
+# kernel-script
 
-[npm-version]: https://npmjs.org/package/@2noscript/kernel-script
-[npm-downloads]: https://npmjs.org/package/@2noscript/kernel-script
+[npm-version]: https://npmjs.org/package/kernel-script
+[npm-downloads]: https://npmjs.org/package/kernel-script
 [license]: https://mit-license.org
 [license-url]: LICENSE
 
-[![npm version](https://img.shields.io/npm/v/@2noscript/kernel-script.svg?style=flat-square)](https://npmjs.org/package/@2noscript/kernel-script)
-[![npm downloads](https://img.shields.io/npm/dm/@2noscript/kernel-script.svg?style=flat-square)](https://npmjs.org/package/@2noscript/kernel-script)
-[![license](https://img.shields.io/npm/l/@2noscript/kernel-script.svg?style=flat-square)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/kernel-script.svg?style=flat-square)](https://npmjs.org/package/kernel-script)
+[![npm downloads](https://img.shields.io/npm/dm/kernel-script.svg?style=flat-square)](https://npmjs.org/package/kernel-script)
+[![license](https://img.shields.io/npm/l/kernel-script.svg?style=flat-square)](LICENSE)
 
 Task queue manager for Chrome extensions with background processing, persistence, and React hooks.
 
@@ -34,9 +34,9 @@ Task queue manager for Chrome extensions with background processing, persistence
 ## Quick Start
 
 ```bash
-npm install @2noscript/kernel-script
+npm install kernel-script
 # or
-bun add @2noscript/kernel-script
+bun add kernel-script
 ```
 
 ```typescript
@@ -45,7 +45,7 @@ import {
   registerAllEngines,
   useQueue,
   createTaskStore,
-} from '@2noscript/kernel-script';
+} from 'kernel-script';
 
 // 1. Define your engine
 const myEngine = {
@@ -172,9 +172,9 @@ sequenceDiagram
 ## Installation
 
 ```bash
-npm install @2noscript/kernel-script
+npm install kernel-script
 # or
-bun add @2noscript/kernel-script
+bun add kernel-script
 ```
 
 ## Usage
@@ -182,8 +182,8 @@ bun add @2noscript/kernel-script
 ### Basic Setup
 
 ```typescript
-import { setupBackgroundEngine, registerAllEngines } from '@2noscript/kernel-script';
-import type { BaseEngine, Task, EngineResult } from '@2noscript/kernel-script';
+import { setupBackgroundEngine, registerAllEngines } from 'kernel-script';
+import type { BaseEngine, Task, EngineResult } from 'kernel-script';
 
 // Define your custom engine
 const myEngine: BaseEngine = {
@@ -215,7 +215,7 @@ registerAllEngines();
 ### React Hook
 
 ```typescript
-import { useQueue, createTaskStore } from '@2noscript/kernel-script';
+import { useQueue, createTaskStore } from 'kernel-script';
 
 // Create a task store
 const taskStore = createTaskStore({ name: 'my-tasks' });
@@ -243,7 +243,7 @@ function TaskQueue() {
 ### Advanced
 
 ```typescript
-import { getQueueManager, TaskConfig } from '@2noscript/kernel-script';
+import { getQueueManager, TaskConfig } from 'kernel-script';
 
 // Get queue manager instance
 const queueManager = getQueueManager();
@@ -378,7 +378,7 @@ A: Ensure your store is passed correctly to `useQueue` funcs parameter.
 A: Register your engine with `setupBackgroundEngine()` before using it.
 
 **Q: "Cannot read property X of undefined"**
-A: Ensure you're importing from `dist/` after building: `import { ... } from '@2noscript/kernel-script'`
+A: Ensure you're importing from `dist/` after building: `import { ... } from 'kernel-script'`
 
 **Q: TypeScript errors on import**
 A: Make sure to install peer dependencies: `npm install react react-dom`
