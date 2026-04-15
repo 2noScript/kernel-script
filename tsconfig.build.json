@@ -5,7 +5,7 @@
     "emitDeclarationOnly": true,
     "outDir": "./dist",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": false
   },
   "include": ["src/**/*"]
 }

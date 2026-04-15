@@ -6,7 +6,7 @@ await esbuild.build({
   outdir: 'dist',
   format: 'esm',
   splitting: true,
-  sourcemap: true,
+  sourcemap: false,
   minify: false,
   target: ['es2020'],
 });
@@ -18,7 +18,7 @@ await esbuild.build({
   format: 'cjs',
   platform: 'node',
   outExtension: { '.js': '.cjs' },
-  sourcemap: true,
+  sourcemap: false,
   minify: false,
   target: ['es2020'],
 });
