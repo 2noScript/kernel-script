@@ -8,7 +8,7 @@ export class PersistenceManager {
 
   async saveQueueStates(states: Record<string, SerializedQueueState>): Promise<void> {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
+      if (chrome.storage) {
         await chrome.storage.local.set({ [PersistenceManager.STORAGE_KEY]: states });
       }
     } catch (e) {
@@ -18,7 +18,7 @@ export class PersistenceManager {
 
   async loadQueueStates(): Promise<Record<string, SerializedQueueState>> {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
+      if (chrome.storage) {
         const data = await chrome.storage.local.get(PersistenceManager.STORAGE_KEY);
         const stored = data[PersistenceManager.STORAGE_KEY];
         if (stored && typeof stored === 'object') {
