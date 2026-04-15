@@ -1,7 +1,7 @@
 import PQueue from 'p-queue';
 import type { Task, TaskConfig } from '@/core/types/task';
 import type { BaseEngine, EngineResult } from '@/core/types/engine';
-import { persistenceManager, type SerializedQueueState } from '@/core/persistence-manager';
+import { PersistenceManager, type SerializedQueueState } from '@/core/persistence-manager';
 import { engineHub } from '@/core/engine-hub';
 import { TaskContext } from '@/core/task-context';
 import { sleep } from '@/core/helper';
@@ -15,6 +15,7 @@ export interface QueueStatus {
 
 export interface QueueOptions {
   debug?: boolean;
+  storageKey?: string;
   defaultConcurrency?: number;
   onTaskStart?: (keycard: string, identifier: string, taskId: string) => void;
   onTaskComplete?: (
@@ -44,10 +45,12 @@ export class QueueManager {
   private concurrencyMap: Map<string, number> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
   public debug: boolean = false;
+  private persistenceManager: PersistenceManager;
 
   constructor(options: Partial<QueueOptions>) {
     this.defaultOptions = options;
     this.debug = options.debug ?? false;
+    this.persistenceManager = new PersistenceManager(options.storageKey);
   }
 
   private debugLog(...args: unknown[]): void {
@@ -652,7 +655,7 @@ export class QueueManager {
       };
     }
 
-    await persistenceManager.saveQueueStates(states);
+    await this.persistenceManager.saveQueueStates(states);
   }
 
   updateTaskConfig(keycard: string, identifier: string, taskConfig: TaskConfig): void {
@@ -667,7 +670,7 @@ export class QueueManager {
   }
 
   async hydrate(): Promise<void> {
-    const states = await persistenceManager.loadQueueStates();
+    const states = await this.persistenceManager.loadQueueStates();
     if (!states) return;
 
     for (const key in states) {

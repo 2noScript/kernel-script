@@ -3,8 +3,17 @@ import type { BaseEngine } from '@/core/types/engine';
 import { getQueueManager } from '@/core/queue-manager';
 import { registerAllEngines } from '@/core/registry';
 
-export const setupBackgroundEngine = (engines: Record<string, BaseEngine>, debug = false) => {
-  const queueManager = getQueueManager({ debug });
+export interface SetupOptions {
+  debug?: boolean;
+  storageKey?: string;
+}
+
+export const setupBackgroundEngine = (
+  engines: Record<string, BaseEngine>,
+  options: SetupOptions = {}
+) => {
+  const { debug = false, storageKey } = options;
+  const queueManager = getQueueManager({ debug, storageKey });
   registerAllEngines(engines, queueManager);
 
   const debugLog = (...args: unknown[]) => {

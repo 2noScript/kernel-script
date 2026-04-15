@@ -285,7 +285,7 @@ export function useQueue(config: QueueHookConfig) {
         // 2. Update store
         const updates: Record<string, Partial<Task>> = {};
         taskIds.forEach((id) => {
-          updates[id] = { status: 'Skipped', isQueued: false, isFlagged: true };
+          updates[id] = { status: 'Skipped', isQueued: false };
         });
         funcs.updateTasks(updates);
       },

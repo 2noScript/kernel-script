@@ -3,21 +3,21 @@ export type Task = {
   no: number;
   name: string;
   status:
-    | "Draft"
-    | "Waiting"
-    | "Running"
-    | "Completed"
-    | "Error"
-    | "Previous"
-    | "Skipped";
+  | "Draft"
+  | "Waiting"
+  | "Running"
+  | "Completed"
+  | "Error"
+  | "Previous"
+  | "Skipped";
   progress: number;
   payload: Record<string, any>;
   output?: unknown;
   errorMessage?: string;
   isQueued?: boolean;
-  isFlagged?: boolean;
   createAt?: number;
   updateAt?: number;
+  [key: string]: unknown;
 };
 
 export type TaskConfig = {
