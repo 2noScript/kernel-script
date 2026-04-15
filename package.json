@@ -1,6 +1,6 @@
 {
   "name": "kernel-script",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Task queue manager for Chrome extensions with background processing, persistence, and React hooks",
   "type": "module",
   "main": "dist/index.cjs",
