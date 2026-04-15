@@ -3,6 +3,7 @@ export * from '@/core/task-context';
 export * from '@/core/types/task';
 export * from '@/core/commands';
 export * from '@/core/store/base-task.store';
+export * from '@/core/types/engine';
 export { useQueue } from '@/core/hooks/use-queue';
 export { setupBackgroundEngine } from '@/core/bootstrap';
 export { engineHub } from '@/core/engine-hub';
