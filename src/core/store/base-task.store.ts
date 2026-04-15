@@ -1,10 +1,6 @@
-import { create } from "zustand";
-import {
-  createJSONStorage,
-  persist,
-  type StateStorage,
-} from "zustand/middleware";
-import type { Task, TaskConfig } from "@/kernel/task";
+import { create } from 'zustand';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+import type { Task, TaskConfig } from '@/core/task';
 
 export interface TaskStoreState {
   tasks: Task[];
@@ -34,7 +30,7 @@ export interface TaskStoreState {
   getGenerating: () => boolean;
   getTaskConfig: () => TaskConfig;
   taskConfig: TaskConfig;
-  updateTaskConfig: (updates: Partial<TaskStoreState["taskConfig"]>) => void;
+  updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) => void;
 }
 
 export interface CreateTaskStoreOptions<T extends object> {
@@ -44,9 +40,7 @@ export interface CreateTaskStoreOptions<T extends object> {
   extend?: (set: (state: any) => any, get: () => any) => T;
 }
 
-export const createTaskStore = <T extends object>(
-  options: CreateTaskStoreOptions<T>,
-) => {
+export const createTaskStore = <T extends object>(options: CreateTaskStoreOptions<T>) => {
   const { name, storage, partialize, extend } = options;
 
   const baseState = {
@@ -71,9 +65,7 @@ export const createTaskStore = <T extends object>(
           generating: false,
           getTasks: () => get().tasks,
           setTasks: (tasks: Task[]) => {
-            const uniqueTasks = Array.from(
-              new Map(tasks.map((t: Task) => [t.id, t])).values(),
-            );
+            const uniqueTasks = Array.from(new Map(tasks.map((t: Task) => [t.id, t])).values());
             set({ tasks: uniqueTasks });
           },
           setPendingCount: (count: number) => set({ pendingCount: count }),
@@ -106,18 +98,14 @@ export const createTaskStore = <T extends object>(
           updateTask: (taskId: string, updates: Partial<Task>) => {
             set((state: any) => ({
               tasks: state.tasks.map((t: Task) =>
-                t.id === taskId
-                  ? { ...t, ...updates, updateAt: Date.now() }
-                  : t,
+                t.id === taskId ? { ...t, ...updates, updateAt: Date.now() } : t
               ),
             }));
           },
           updateTasks: (updates: Record<string, Partial<Task>>) =>
             set((state: any) => ({
               tasks: state.tasks.map((t: Task) =>
-                updates[t.id]
-                  ? { ...t, ...updates[t.id], updateAt: Date.now() }
-                  : t,
+                updates[t.id] ? { ...t, ...updates[t.id], updateAt: Date.now() } : t
               ),
             })),
           deleteTasks: (taskIds: string[]) =>
@@ -125,9 +113,7 @@ export const createTaskStore = <T extends object>(
               tasks: state.tasks
                 .filter((t: Task) => !taskIds.includes(t.id))
                 .map((t: Task, i: number) => ({ ...t, no: i + 1 })),
-              selectedIds: state.selectedIds.filter(
-                (id: string) => !taskIds.includes(id),
-              ),
+              selectedIds: state.selectedIds.filter((id: string) => !taskIds.includes(id)),
             })),
           clearTasks: () => set({ tasks: [], selectedIds: [] }),
           addHistoryTask: (task: Task) =>
@@ -155,14 +141,10 @@ export const createTaskStore = <T extends object>(
 
               if (allTargetSelected) {
                 return {
-                  selectedIds: state.selectedIds.filter(
-                    (id: string) => !targetIds.includes(id),
-                  ),
+                  selectedIds: state.selectedIds.filter((id: string) => !targetIds.includes(id)),
                 };
               } else {
-                const newSelectedIds = Array.from(
-                  new Set([...state.selectedIds, ...targetIds]),
-                );
+                const newSelectedIds = Array.from(new Set([...state.selectedIds, ...targetIds]));
                 return { selectedIds: newSelectedIds };
               }
             }),
@@ -172,7 +154,7 @@ export const createTaskStore = <T extends object>(
           getIsPaused: () => get().isPaused,
           getGenerating: () => get().generating,
           getTaskConfig: () => get().taskConfig,
-          updateTaskConfig: (updates: Partial<TaskStoreState["taskConfig"]>) =>
+          updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) =>
             set((state: any) => ({
               taskConfig: { ...state.taskConfig, ...updates },
             })),
@@ -194,8 +176,8 @@ export const createTaskStore = <T extends object>(
               ...customPersist,
             };
           },
-        },
-      ),
+        }
+      )
     );
   }
 
@@ -205,9 +187,7 @@ export const createTaskStore = <T extends object>(
     generating: false,
     getTasks: () => get().tasks,
     setTasks: (tasks: Task[]) => {
-      const uniqueTasks = Array.from(
-        new Map(tasks.map((t: Task) => [t.id, t])).values(),
-      );
+      const uniqueTasks = Array.from(new Map(tasks.map((t: Task) => [t.id, t])).values());
       set({ tasks: uniqueTasks });
     },
     setPendingCount: (count: number) => set({ pendingCount: count }),
@@ -226,25 +206,19 @@ export const createTaskStore = <T extends object>(
       }),
     updateTask: (taskId: string, updates: Partial<Task>) => {
       set((state: any) => ({
-        tasks: state.tasks.map((t: Task) =>
-          t.id === taskId ? { ...t, ...updates } : t,
-        ),
+        tasks: state.tasks.map((t: Task) => (t.id === taskId ? { ...t, ...updates } : t)),
       }));
     },
     updateTasks: (updates: Record<string, Partial<Task>>) =>
       set((state: any) => ({
-        tasks: state.tasks.map((t: Task) =>
-          updates[t.id] ? { ...t, ...updates[t.id] } : t,
-        ),
+        tasks: state.tasks.map((t: Task) => (updates[t.id] ? { ...t, ...updates[t.id] } : t)),
       })),
     deleteTasks: (taskIds: string[]) =>
       set((state: any) => ({
         tasks: state.tasks
           .filter((t: Task) => !taskIds.includes(t.id))
           .map((t: Task, i: number) => ({ ...t, no: i + 1 })),
-        selectedIds: state.selectedIds.filter(
-          (id: string) => !taskIds.includes(id),
-        ),
+        selectedIds: state.selectedIds.filter((id: string) => !taskIds.includes(id)),
       })),
     clearTasks: () => set({ tasks: [], selectedIds: [] }),
     addHistoryTask: (task: Task) =>
@@ -267,19 +241,14 @@ export const createTaskStore = <T extends object>(
       set((state: any) => {
         const targetIds = ids || state.tasks.map((t: Task) => t.id);
         const allTargetSelected =
-          targetIds.length > 0 &&
-          targetIds.every((id: string) => state.selectedIds.includes(id));
+          targetIds.length > 0 && targetIds.every((id: string) => state.selectedIds.includes(id));
 
         if (allTargetSelected) {
           return {
-            selectedIds: state.selectedIds.filter(
-              (id: string) => !targetIds.includes(id),
-            ),
+            selectedIds: state.selectedIds.filter((id: string) => !targetIds.includes(id)),
           };
         } else {
-          const newSelectedIds = Array.from(
-            new Set([...state.selectedIds, ...targetIds]),
-          );
+          const newSelectedIds = Array.from(new Set([...state.selectedIds, ...targetIds]));
           return { selectedIds: newSelectedIds };
         }
       }),
@@ -288,7 +257,7 @@ export const createTaskStore = <T extends object>(
     setGenerating: (generating: boolean) => set({ generating }),
     getIsPaused: () => get().isPaused,
     getGenerating: () => get().generating,
-    updateTaskConfig: (updates: Partial<TaskStoreState["taskConfig"]>) =>
+    updateTaskConfig: (updates: Partial<TaskStoreState['taskConfig']>) =>
       set((state: any) => ({
         taskConfig: { ...state.taskConfig, ...updates },
       })),

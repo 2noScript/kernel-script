@@ -1,5 +1,5 @@
-import type { Task } from "@/kernel/task";
-import type { TaskContext } from "@/kernel/task-context";
+import type { Task } from '@/core/task';
+import type { TaskContext } from '@/core/task-context';
 
 export type EngineResult = {
   success: boolean;

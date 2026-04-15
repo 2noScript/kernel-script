@@ -1,7 +1,7 @@
-import { QUEUE_COMMAND } from '@/kernel/commands';
-import type { BaseEngine } from '@/kernel/engine';
-import { getQueueManager } from '@/kernel/queue-manager';
-import { registerAllEngines } from '@/kernel/registry';
+import { QUEUE_COMMAND } from '@/core/commands';
+import type { BaseEngine } from '@/core/engine';
+import { getQueueManager } from '@/core/queue-manager';
+import { registerAllEngines } from '@/core/registry';
 
 export const setupBackgroundEngine = (engines: Record<string, BaseEngine>) => {
   const queueManager = getQueueManager();

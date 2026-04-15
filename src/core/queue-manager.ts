@@ -1,10 +1,10 @@
 import PQueue from 'p-queue';
-import type { Task, TaskConfig } from '@/kernel/task';
-import type { BaseEngine, EngineResult } from '@/kernel/engine';
-import { persistenceManager, type SerializedQueueState } from '@/kernel/persistence-manager';
-import { engineHub } from '@/kernel/engine-hub';
-import { TaskContext } from '@/kernel/task-context';
-import { sleep } from '@/kernel/helper';
+import type { Task, TaskConfig } from '@/core/task';
+import type { BaseEngine, EngineResult } from '@/core/engine';
+import { persistenceManager, type SerializedQueueState } from '@/core/persistence-manager';
+import { engineHub } from '@/core/engine-hub';
+import { TaskContext } from '@/core/task-context';
+import { sleep } from '@/core/helper';
 
 export interface QueueStatus {
   size: number;

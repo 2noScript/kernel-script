@@ -1,7 +1,7 @@
-import { useEffect, useCallback, useRef } from "react";
-import type { Task, TaskConfig } from "@/kernel/task";
-import { type QueueStatus } from "@/kernel/queue-manager";
-import { QUEUE_COMMAND } from "@/kernel/commands";
+import { useEffect, useCallback, useRef } from 'react';
+import type { Task, TaskConfig } from '@/core/task';
+import { type QueueStatus } from '@/core/queue-manager';
+import { QUEUE_COMMAND } from '@/core/commands';
 
 interface Funcs {
   getTasks: () => Task[];
@@ -26,32 +26,29 @@ export function useQueue(config: QueueHookConfig) {
   return function initQueue() {
     const { keycard, getIdentifier, funcs } = config;
 
-    const safeSendMessage = useCallback(
-      (msg: any, callback?: (resp: any) => void) => {
-        try {
-          if (!chrome.runtime?.id) {
-            console.warn("Extension context invalidated.");
+    const safeSendMessage = useCallback((msg: any, callback?: (resp: any) => void) => {
+      try {
+        if (!chrome.runtime?.id) {
+          console.warn('Extension context invalidated.');
+          return;
+        }
+        chrome.runtime.sendMessage(msg, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn('Message failed:', chrome.runtime.lastError.message);
             return;
           }
-          chrome.runtime.sendMessage(msg, (response) => {
-            if (chrome.runtime.lastError) {
-              console.warn("Message failed:", chrome.runtime.lastError.message);
-              return;
-            }
-            callback?.(response);
-          });
-        } catch (e) {
-          console.error("Critical messaging error:", e);
-        }
-      },
-      [],
-    );
+          callback?.(response);
+        });
+      } catch (e) {
+        console.error('Critical messaging error:', e);
+      }
+    }, []);
 
     const lastInitializedRef = useRef<string | undefined>(undefined);
     const identifier = getIdentifier();
 
     useEffect(() => {
-      const currentId = identifier || "";
+      const currentId = identifier || '';
       const needsSync = lastInitializedRef.current !== currentId;
 
       if (needsSync) {
@@ -59,7 +56,7 @@ export function useQueue(config: QueueHookConfig) {
         // Perform initial SYNC with background
         safeSendMessage(
           {
-            type: "QUEUE_COMMAND",
+            type: 'QUEUE_COMMAND',
             command: QUEUE_COMMAND.SYNC,
             keycard,
             identifier,
@@ -72,7 +69,7 @@ export function useQueue(config: QueueHookConfig) {
                 const localTasks = funcs.getTasks();
                 if (localTasks.length > 0) {
                   safeSendMessage({
-                    type: "QUEUE_COMMAND",
+                    type: 'QUEUE_COMMAND',
                     command: QUEUE_COMMAND.ADD_MANY,
                     keycard,
                     identifier,
@@ -82,30 +79,27 @@ export function useQueue(config: QueueHookConfig) {
               }
 
               if (response.status) {
-                funcs.setPendingCount(
-                  response.status.size + response.status.pending,
-                );
+                funcs.setPendingCount(response.status.size + response.status.pending);
                 funcs.setIsPaused(response.status.isPaused);
               }
             }
-          },
+          }
         );
       }
 
       const handleMessage = (message: any) => {
-        if (message.type === "QUEUE_EVENT") {
+        if (message.type === 'QUEUE_EVENT') {
           const { event, keycard: pid, identifier: pjid, data } = message;
 
           // Robust check: handle null, undefined, empty string as equivalent for identifiers
-          const isPlatformMatch = pid === keycard || pid === "*";
-          const isIdentifierMatch =
-            (pjid || "") === (identifier || "") || pid === "*";
+          const isPlatformMatch = pid === keycard || pid === '*';
+          const isIdentifierMatch = (pjid || '') === (identifier || '') || pid === '*';
 
           if (!isPlatformMatch || !isIdentifierMatch) return;
 
           switch (event) {
-            case "TASKS_UPDATED": {
-              console.log("TASKS_UPDATED", data);
+            case 'TASKS_UPDATED': {
+              console.log('TASKS_UPDATED', data);
               const updates: Record<string, Partial<Task>> = {};
               data.tasks.forEach((t: Task) => {
                 updates[t.id] = t;
@@ -115,10 +109,10 @@ export function useQueue(config: QueueHookConfig) {
               funcs.setIsPaused(data.status.isPaused);
               break;
             }
-            case "PENDING_COUNT_CHANGED":
+            case 'PENDING_COUNT_CHANGED':
               funcs.setPendingCount(data.count);
               break;
-            case "HISTORY_ADDED":
+            case 'HISTORY_ADDED':
               if (funcs.addHistoryTask) {
                 funcs.addHistoryTask(data.task);
               }
@@ -139,24 +133,24 @@ export function useQueue(config: QueueHookConfig) {
         return new Promise((resolve) => {
           safeSendMessage(
             {
-              type: "QUEUE_COMMAND",
+              type: 'QUEUE_COMMAND',
               command,
               keycard,
               identifier,
               payload,
             },
-            resolve,
+            resolve
           );
         });
       },
-      [keycard, getIdentifier, safeSendMessage],
+      [keycard, getIdentifier, safeSendMessage]
     );
 
     const addTask = useCallback(
       async (task: Task) => {
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
-      [sendQueueCommand, funcs],
+      [sendQueueCommand, funcs]
     );
 
     const start = useCallback(async () => {
@@ -193,14 +187,14 @@ export function useQueue(config: QueueHookConfig) {
       async (taskId: string) => {
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASK, { taskId });
       },
-      [sendQueueCommand],
+      [sendQueueCommand]
     );
 
     const cancelTasks = useCallback(
       async (taskIds: string[]) => {
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
       },
-      [sendQueueCommand],
+      [sendQueueCommand]
     );
 
     const setTaskConfig = useCallback((taskConfig: TaskConfig) => {
@@ -214,12 +208,12 @@ export function useQueue(config: QueueHookConfig) {
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
-            status: "Waiting",
+            status: 'Waiting',
             isQueued: true,
           })),
         });
       },
-      [funcs, sendQueueCommand],
+      [funcs, sendQueueCommand]
     );
 
     const deleteTasks = useCallback(
@@ -232,7 +226,7 @@ export function useQueue(config: QueueHookConfig) {
         // 2. Delete from store
         funcs.deleteTasks(taskIds);
       },
-      [funcs, sendQueueCommand],
+      [funcs, sendQueueCommand]
     );
 
     const skipTaskIds = useCallback(
@@ -240,16 +234,16 @@ export function useQueue(config: QueueHookConfig) {
         if (taskIds.length === 0) return;
 
         // 1. Cancel in background if they are currently active
-        await sendQueueCommand("CANCEL_TASKS", { taskIds });
+        await sendQueueCommand('CANCEL_TASKS', { taskIds });
 
         // 2. Update store
         const updates: Record<string, Partial<Task>> = {};
         taskIds.forEach((id) => {
-          updates[id] = { status: "Skipped", isQueued: false, isFlagged: true };
+          updates[id] = { status: 'Skipped', isQueued: false, isFlagged: true };
         });
         funcs.updateTasks(updates);
       },
-      [funcs, sendQueueCommand],
+      [funcs, sendQueueCommand]
     );
 
     const retryTasks = useCallback(
@@ -260,7 +254,7 @@ export function useQueue(config: QueueHookConfig) {
         // 1. Reset tasks in store
         tasks.forEach((task) => {
           funcs.updateTask(task.id, {
-            status: "Waiting",
+            status: 'Waiting',
             errorMessage: undefined,
             isQueued: true,
           });
@@ -270,13 +264,13 @@ export function useQueue(config: QueueHookConfig) {
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
-            status: "Waiting",
+            status: 'Waiting',
             errorMessage: undefined,
             isQueued: true,
           })),
         });
       },
-      [funcs, sendQueueCommand],
+      [funcs, sendQueueCommand]
     );
 
     return {
