@@ -1,6 +1,5 @@
-import { QUEUE_COMMAND } from '@/core/commands';
 import type { BaseEngine } from '@/core/types';
-import { getQueueManager, type QueueManager } from '@/core/managers/queue.manager';
+import { getQueueManager } from '@/core/managers/queue.manager';
 import { registerAllEngines } from '@/core/registry';
 import { createBroadcast } from '@/core/bootstrap/broadcast';
 import { createHeartbeatHandler } from '@/core/bootstrap/heartbeat';
@@ -52,16 +51,5 @@ export const setupKernelScript = (
       debugLog('Service Worker Heartbeat...');
     }
   });
-
-  chrome.runtime.onInstalled.addListener(() => {
-    debugLog('Auto Script Extension Installed');
-  });
-
-  chrome.commands.onCommand.addListener((command) => {
-    if (command === 'open-popup') {
-      chrome.action.openPopup().catch((err) => console.error('Failed to open popup', err));
-    }
-  });
-
   bootstrap();
 };
