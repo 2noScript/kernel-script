@@ -452,32 +452,7 @@ export function TaskTable() {
         ),
         size: 180,
       },
-      {
-        accessorKey: 'output',
-        header: () => (
-          <div className="text-center font-black uppercase tracking-widest text-[9px] text-muted-foreground">
-            Output
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="flex items-center justify-center">
-            <div className="relative w-16 h-16 rounded-xl bg-muted border border-border overflow-hidden group-hover:border-primary/30 transition-all flex items-center justify-center shadow-md">
-              {row.original.output ? (
-                <img
-                  src={String(row.original.output)}
-                  className="w-full h-full object-cover"
-                  alt="out"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-muted-foreground/20" />
-                </div>
-              )}
-            </div>
-          </div>
-        ),
-        size: 100,
-      },
+
       {
         id: 'progress',
         header: () => (
@@ -574,13 +549,7 @@ export function TaskTable() {
                   <Play className="w-3.5 h-3.5 fill-current" />
                 )}
               </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                className="w-7 h-7 rounded-lg transition-all shadow-sm"
-              >
-                <FolderDown className="w-3.5 h-3.5" />
-              </Button>
+          
             </div>
           </div>
         ),
