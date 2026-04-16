@@ -6,10 +6,10 @@ import { createBroadcast } from '@/core/bootstrap/broadcast';
 import { createHeartbeatHandler } from '@/core/bootstrap/heartbeat';
 import { createMessageHandler } from '@/core/bootstrap/message-handler';
 
-export interface SetupOptions {
+export type SetupOptions = {
   debug?: boolean;
   storageKey?: string;
-}
+};
 
 export const setupBackgroundEngine = (
   engines: Record<string, BaseEngine>,

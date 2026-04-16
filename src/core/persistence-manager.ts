@@ -1,11 +1,11 @@
-export interface SerializedQueueState {
+export type SerializedQueueState = {
   isRunning: boolean;
-}
+};
 
 export class PersistenceManager {
   private storageKey: string;
 
-  constructor(storageKey: string = 'queue_manager_state') {
+  constructor(storageKey: string = 'QUEUE_MANAGER_STATE') {
     this.storageKey = storageKey;
   }
 

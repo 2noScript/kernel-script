@@ -1,7 +1,7 @@
-export interface SetupOptions {
+export type SetupOptions = {
   debug?: boolean;
   storageKey?: string;
-}
+};
 
 const broadcast = (message: any) => {
   chrome.runtime.sendMessage(message).catch(() => {
