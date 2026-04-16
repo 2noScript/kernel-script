@@ -13,5 +13,5 @@ AGENTS.md
 .DS_Store
 docs/
 
-# Dependencies (đã có trong package.json)
 node_modules/
+example
