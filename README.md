@@ -69,7 +69,7 @@ const { start, pause, tasks, pendingCount } = useQueue({
 
 ## Examples
 
-Xem thư mục [`example/`](example/) để xem project hoàn chỉnh sử dụng kernel-script.
+Check the [`example/`](example/) folder for a complete project using kernel-script.
 
 ```bash
 cd example
