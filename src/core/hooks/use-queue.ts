@@ -58,7 +58,7 @@ export function useQueue(config: QueueHookConfig) {
 
       if (needsSync) {
         lastInitializedRef.current = currentId;
-        debugLog(`[HOOK] SYNC: Initial sync for ${keycard}/${identifier || 'default'}`);
+        debugLog(`[HOOK] SYNC: Initial sync for ${keycard}/${identifier}`);
         // Perform initial SYNC with background
         safeSendMessage(
           {
@@ -70,7 +70,7 @@ export function useQueue(config: QueueHookConfig) {
           (response: { tasks?: Task[]; status?: QueueStatus }) => {
             if (response) {
               debugLog(
-                `[HOOK] SYNC: Response for ${keycard}/${identifier || 'default'}: ${response.tasks?.length || 0} tasks`
+                `[HOOK] SYNC: Response for ${keycard}/${identifier}: ${response.tasks?.length || 0} tasks`
               );
               if (response.tasks && response.tasks.length > 0) {
                 funcs.setTasks(response.tasks);
@@ -112,7 +112,7 @@ export function useQueue(config: QueueHookConfig) {
           switch (event) {
             case 'TASKS_UPDATED': {
               debugLog(
-                `[HOOK] EVENT: TASKS_UPDATED for ${keycard}/${identifier || 'default'}, count: ${data.tasks?.length || 0}`
+                `[HOOK] EVENT: TASKS_UPDATED for ${keycard}/${identifier}, count: ${data.tasks?.length || 0}`
               );
               const updates: Record<string, Partial<Task>> = {};
               data.tasks.forEach((t: Task) => {
@@ -125,12 +125,12 @@ export function useQueue(config: QueueHookConfig) {
             }
             case 'PENDING_COUNT_CHANGED':
               debugLog(
-                `[HOOK] EVENT: PENDING_COUNT_CHANGED for ${keycard}/${identifier || 'default'}: ${data.count}`
+                `[HOOK] EVENT: PENDING_COUNT_CHANGED for ${keycard}/${identifier}: ${data.count}`
               );
               funcs.setPendingCount(data.count);
               break;
             case 'HISTORY_ADDED':
-              debugLog(`[HOOK] EVENT: HISTORY_ADDED for ${keycard}/${identifier || 'default'}`);
+              debugLog(`[HOOK] EVENT: HISTORY_ADDED for ${keycard}/${identifier}`);
               if (funcs.addHistoryTask) {
                 funcs.addHistoryTask(data.task);
               }
@@ -167,7 +167,7 @@ export function useQueue(config: QueueHookConfig) {
     const addTask = useCallback(
       async (task: Task) => {
         debugLog(
-          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${getIdentifier() || 'default'}`
+          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${getIdentifier()}`
         );
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
@@ -175,43 +175,43 @@ export function useQueue(config: QueueHookConfig) {
     );
 
     const start = useCallback(async () => {
-      debugLog(`[HOOK] START queue ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] START queue ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.START);
     }, [sendQueueCommand, funcs, debugLog]);
 
     const stop = useCallback(async () => {
-      debugLog(`[HOOK] STOP queue ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] STOP queue ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.STOP);
     }, [sendQueueCommand, funcs, debugLog]);
 
     const pause = useCallback(async () => {
-      debugLog(`[HOOK] PAUSE queue ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] PAUSE queue ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.PAUSE);
     }, [sendQueueCommand, debugLog]);
 
     const resume = useCallback(async () => {
-      debugLog(`[HOOK] RESUME queue ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] RESUME queue ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.RESUME);
     }, [sendQueueCommand, debugLog]);
 
     const clear = useCallback(async () => {
-      debugLog(`[HOOK] CLEAR queue ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] CLEAR queue ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.CLEAR);
     }, [sendQueueCommand, debugLog]);
 
     const getStatus = useCallback(async () => {
-      debugLog(`[HOOK] GET_STATUS from ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] GET_STATUS from ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_STATUS);
     }, [sendQueueCommand, debugLog]);
 
     const getTasks = useCallback(async () => {
-      debugLog(`[HOOK] GET_TASKS from ${keycard}/${getIdentifier() || 'default'}`);
+      debugLog(`[HOOK] GET_TASKS from ${keycard}/${getIdentifier()}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_TASKS);
     }, [sendQueueCommand, debugLog]);
 
     const cancelTask = useCallback(
       async (taskId: string) => {
-        debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${getIdentifier() || 'default'}`);
+        debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${getIdentifier()}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASK, { taskId });
       },
       [sendQueueCommand, debugLog]
@@ -219,9 +219,7 @@ export function useQueue(config: QueueHookConfig) {
 
     const cancelTasks = useCallback(
       async (taskIds: string[]) => {
-        debugLog(
-          `[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier() || 'default'}`
-        );
+        debugLog(`[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier()}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
       },
       [sendQueueCommand, debugLog]
@@ -229,10 +227,7 @@ export function useQueue(config: QueueHookConfig) {
 
     const setTaskConfig = useCallback(
       (taskConfig: TaskConfig) => {
-        debugLog(
-          `[HOOK] SET_TASK_CONFIG for ${keycard}/${getIdentifier() || 'default'}:`,
-          taskConfig
-        );
+        debugLog(`[HOOK] SET_TASK_CONFIG for ${keycard}/${getIdentifier()}:`, taskConfig);
         return sendQueueCommand(QUEUE_COMMAND.SET_TASK_CONFIG, { taskConfig });
       },
       [sendQueueCommand, debugLog]
@@ -242,9 +237,7 @@ export function useQueue(config: QueueHookConfig) {
 
     const publishTasks = useCallback(
       async (tasks: Task[]) => {
-        debugLog(
-          `[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${getIdentifier() || 'default'}`
-        );
+        debugLog(`[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${getIdentifier()}`);
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
@@ -259,9 +252,7 @@ export function useQueue(config: QueueHookConfig) {
     const deleteTasks = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
-        debugLog(
-          `[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier() || 'default'}`
-        );
+        debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier()}`);
 
         // 1. Cancel in background
         await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
@@ -275,9 +266,7 @@ export function useQueue(config: QueueHookConfig) {
     const skipTaskIds = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
-        debugLog(
-          `[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier() || 'default'}`
-        );
+        debugLog(`[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
 
         // 1. Cancel in background if they are currently active
         await sendQueueCommand('CANCEL_TASKS', { taskIds });
@@ -296,9 +285,7 @@ export function useQueue(config: QueueHookConfig) {
       async (taskIds: string[]) => {
         const tasks = funcs.getTasks().filter((t) => taskIds.includes(t.id));
         if (tasks.length === 0) return;
-        debugLog(
-          `[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier() || 'default'}`
-        );
+        debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
 
         // 1. Reset tasks in store
         tasks.forEach((task) => {
