@@ -43,7 +43,7 @@ bun add kernel-script
 import {
   setupBackgroundEngine,
   registerAllEngines,
-  useQueue,
+  useWorker,
   createTaskStore,
 } from 'kernel-script';
 
@@ -59,12 +59,16 @@ const myEngine = {
 // 2. Initialize in background script
 setupBackgroundEngine({ 'my-platform': myEngine });
 
-// 3. Use in React component
-const store = createTaskStore({ name: 'my-tasks' });
-const { start, pause, tasks, pendingCount } = useQueue({
-  keycard: 'my-platform',
-  funcs: store,
-});
+// 3. Create store and use hook in React
+const taskStore = createTaskStore({ name: 'my-tasks' });
+const TaskQueue = () => {
+  const { start, pause, addTask } = useWorker({
+    keycard: 'my-platform',
+    getIdentifier: () => 'default',
+    funcs: taskStore,
+  });
+  // ...
+};
 ```
 
 ## Examples
@@ -232,22 +236,22 @@ registerAllEngines();
 ### React Hook
 
 ```typescript
-import { useQueue, createTaskStore } from 'kernel-script';
+import { useWorker, createTaskStore } from 'kernel-script';
 
 // Create a task store
 const taskStore = createTaskStore({ name: 'my-tasks' });
 
 // Use in your component
 function TaskQueue() {
-  const { start, pause, resume, stop, tasks, pendingCount, runningCount } = useQueue({
+  const { start, pause, resume, stop, addTask, deleteTasks, retryTasks } = useWorker({
     keycard: 'my-platform',
+    getIdentifier: () => 'default',
     funcs: taskStore,
   });
 
   return (
     <div>
-      <h2>Tasks: {tasks.length}</h2>
-      <p>Pending: {pendingCount} | Running: {runningCount}</p>
+      <h2>Tasks: {taskStore.getTasks().length}</h2>
       <button onClick={start}>Start</button>
       <button onClick={pause}>Pause</button>
       <button onClick={resume}>Resume</button>
@@ -332,9 +336,9 @@ queueManager.start('my-platform', 'default');
 
 ### Hooks
 
-| Hook               | Description                     | Usage                          |
-| ------------------ | ------------------------------- | ------------------------------ |
-| `useQueue(config)` | React hook for queue operations | `useQueue({ keycard, funcs })` |
+| Hook                | Description                     | Usage                                          |
+| ------------------- | ------------------------------- | ---------------------------------------------- |
+| `useWorker(config)` | React hook for queue operations | `useWorker({ keycard, getIdentifier, funcs })` |
 
 ### Store
 

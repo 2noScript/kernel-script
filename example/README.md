@@ -14,15 +14,15 @@ bun build
 
 - **Task Queue** - Queue, schedule, and execute tasks with background processing
 - **Persistence** - IndexedDB storage for task state
-- **Queue Hook** - useQueue React hook for task management
+- **Queue Hook** - useWorker React hook for task management
 
 ## Using kernel-script
 
-| File                                                         | Description                 |
-| ------------------------------------------------------------ | --------------------------- |
-| [`src/background.ts`](src/background.ts)                     | Engine setup                |
-| [`src/hooks/use-task-queue.ts`](src/hooks/use-task-queue.ts) | useQueue hook               |
-| [`src/stores/task.store.ts`](src/stores/task.store.ts)       | Task store with persistence |
+| File                                                           | Description                 |
+| -------------------------------------------------------------- | --------------------------- |
+| [`src/background.ts`](src/background.ts)                       | Engine setup                |
+| [`src/hooks/use-task-worker.ts`](src/hooks/use-task-worker.ts) | useWorker hook              |
+| [`src/stores/task.store.ts`](src/stores/task.store.ts)         | Task store with persistence |
 
 ## Installation
 

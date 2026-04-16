@@ -43,7 +43,7 @@ bun add kernel-script
 import {
   setupBackgroundEngine,
   registerAllEngines,
-  useQueue,
+  useWorker,
   createTaskStore,
 } from 'kernel-script';
 
@@ -59,12 +59,16 @@ const myEngine = {
 // 2. Khởi tạo trong background script
 setupBackgroundEngine({ 'my-platform': myEngine });
 
-// 3. Sử dụng trong React component
-const store = createTaskStore({ name: 'my-tasks' });
-const { start, pause, tasks, pendingCount } = useQueue({
-  keycard: 'my-platform',
-  funcs: store,
-});
+// 3. Tạo store và sử dụng hook trong React
+const taskStore = createTaskStore({ name: 'my-tasks' });
+const TaskQueue = () => {
+  const { start, pause, addTask } = useWorker({
+    keycard: 'my-platform',
+    getIdentifier: () => 'default',
+    funcs: taskStore,
+  });
+  // ...
+};
 ```
 
 ## Ví dụ
@@ -232,22 +236,22 @@ registerAllEngines();
 ### React Hook
 
 ```typescript
-import { useQueue, createTaskStore } from 'kernel-script';
+import { useWorker, createTaskStore } from 'kernel-script';
 
 // Tạo task store
 const taskStore = createTaskStore({ name: 'my-tasks' });
 
 // Sử dụng trong component của bạn
 function TaskQueue() {
-  const { start, pause, resume, stop, tasks, pendingCount, runningCount } = useQueue({
+  const { start, pause, resume, stop, addTask, deleteTasks, retryTasks } = useWorker({
     keycard: 'my-platform',
+    getIdentifier: () => 'default',
     funcs: taskStore,
   });
 
   return (
     <div>
-      <h2>Tasks: {tasks.length}</h2>
-      <p>Pending: {pendingCount} | Running: {runningCount}</p>
+      <h2>Tasks: {taskStore.getTasks().length}</h2>
       <button onClick={start}>Start</button>
       <button onClick={pause}>Pause</button>
       <button onClick={resume}>Resume</button>
@@ -332,9 +336,9 @@ queueManager.start('my-platform', 'default');
 
 ### Hooks
 
-| Hook               | Mô tả                            | Cách dùng                      |
-| ------------------ | -------------------------------- | ------------------------------ |
-| `useQueue(config)` | React hook cho thao tác hàng đợi | `useQueue({ keycard, funcs })` |
+| Hook                | Mô tả                            | Cách dùng                                      |
+| ------------------- | -------------------------------- | ---------------------------------------------- |
+| `useWorker(config)` | React hook cho thao tác hàng đợi | `useWorker({ keycard, getIdentifier, funcs })` |
 
 ### Store
 
