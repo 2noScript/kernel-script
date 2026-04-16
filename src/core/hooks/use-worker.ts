@@ -3,6 +3,24 @@ import type { Task, TaskConfig } from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND } from '@/core/commands';
 
+export interface WorkerMethods {
+  addTask: (task: Task) => Promise<any>;
+  start: () => Promise<any>;
+  stop: () => Promise<any>;
+  pause: () => Promise<any>;
+  resume: () => Promise<any>;
+  clear: () => Promise<any>;
+  getStatus: () => Promise<any>;
+  getTasks: () => Promise<any>;
+  cancelTask: (taskId: string) => Promise<any>;
+  cancelTasks: (taskIds: string[]) => Promise<any>;
+  publishTasks: (tasks: Task[]) => Promise<any>;
+  deleteTasks: (taskIds: string[]) => Promise<any>;
+  retryTasks: (taskIds: string[]) => Promise<any>;
+  skipTaskIds: (taskIds: string[]) => Promise<any>;
+  setTaskConfig: (taskConfig: TaskConfig) => Promise<any>;
+}
+
 interface Funcs {
   getTasks: () => Task[];
   setTasks: (tasks: Task[]) => void;
@@ -315,6 +333,6 @@ export function useWorker(config: WorkerConfig) {
       retryTasks,
       skipTaskIds,
       setTaskConfig,
-    };
+    } as WorkerMethods;
   };
 }
