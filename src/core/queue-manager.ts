@@ -470,10 +470,15 @@ export class QueueManager {
       delayMin: 0,
       delayMax: 0,
     };
+
+    // Create AbortController BEFORE sleep so it can be aborted during delay
+    const controller = new AbortController();
+    this.abortControllers.set(task.id, controller);
+
     if (delayMax > 0) {
       const delayMs = Math.floor(Math.random() * (delayMax - delayMin + 1) + delayMin) * 1000;
       this.debugLog(`[QueueManager] Delaying task ${task.id} for ${delayMs}ms...`);
-      await sleep(delayMs, this.abortControllers.get(task.id)?.signal);
+      await sleep(delayMs, controller.signal);
     }
 
     this.logQueueState(keycard, identifier, `PROCESS_START ${task.id}`);
@@ -483,8 +488,6 @@ export class QueueManager {
     this.notifyTasksUpdate(keycard, identifier, entry.tasks);
 
     // Create TaskContext for this run
-    const controller = new AbortController();
-    this.abortControllers.set(task.id, controller);
     const ctx = new TaskContext(task, controller.signal);
 
     try {
