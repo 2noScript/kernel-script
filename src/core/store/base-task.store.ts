@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import type { Task, TaskConfig } from '@/core/types';
 
@@ -254,4 +254,20 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
       })),
     ...(extend ? extend(set, get) : {}),
   }));
+};
+
+export const pluginTask = (store: UseBoundStore<StoreApi<TaskStoreState>>) => {
+  const state = store.getState();
+  return {
+    getTasks: state.getTasks,
+    setTasks: state.setTasks,
+    setPendingCount: state.setPendingCount,
+    setIsRunning: state.setIsRunning,
+    updateTask: state.updateTask,
+    deleteTasks: state.deleteTasks,
+    getIsRunning: state.getIsRunning,
+    updateTasks: state.updateTasks,
+    addHistoryTask: state.addHistoryTask,
+    getTaskConfig: state.getTaskConfig,
+  };
 };
