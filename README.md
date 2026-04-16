@@ -92,7 +92,7 @@ bun dev
 - **Task Queue Management** - Queue, schedule, and execute tasks with configurable concurrency
 - **Background Processing** - Run tasks in Chrome background service workers
 - **Persistence** - Queue state persists across extension restarts
-- **React Hooks** - Built-in `useQueue` hook for React integration
+- **React Hooks** - Built-in `useWorker` hook for React integration
 - **Engine System** - Pluggable engine architecture for different task types
 - **TypeScript Support** - Full TypeScript support with type definitions
 
@@ -116,7 +116,7 @@ graph LR
 | Layer | Component           | Description                          |
 | ----- | ------------------- | ------------------------------------ |
 | UI    | TaskStore (Zustand) | Local state management               |
-| UI    | useQueue Hook       | React hook interface                 |
+| UI    | useWorker Hook       | React hook interface                 |
 | BG    | QueueManager        | Task scheduling, concurrency control |
 | BG    | EngineHub           | Engine router/registry               |
 | BG    | PersistenceManager  | IndexedDB persistence                |
@@ -414,7 +414,7 @@ A: Make sure to call `start(platformId, identifier)` after adding tasks.
 A: Verify `persistenceManager` is initialized. Check IndexedDB permissions.
 
 **Q: React hook not updating**
-A: Ensure your store is passed correctly to `useQueue` funcs parameter.
+A: Ensure your store is passed correctly to `useWorker` funcs parameter.
 
 **Q: Engine not found**
 A: Register your engine with `setupBackgroundEngine()` before using it.

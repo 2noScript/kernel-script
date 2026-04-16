@@ -92,7 +92,7 @@ bun dev
 - **Quản lý hàng đợi tác vụ** - Queue, lên lịch, và thực thi tác vụ với concurrency có thể cấu hình
 - **Xử lý Background** - Chạy tác vụ trong Chrome background service workers
 - **Persistence** - Trạng thái hàng đợi được lưu qua các lần khởi động extension
-- **React Hooks** - Hook `useQueue` tích hợp sẵn cho React
+- **React Hooks** - Hook `useWorker` tích hợp sẵn cho React
 - **Hệ thống Engine** - Kiến trúc engine có thể mở rộng cho các loại tác vụ khác nhau
 - **Hỗ trợ TypeScript** - Hỗ trợ TypeScript đầy đủ với type definitions
 
@@ -116,7 +116,7 @@ graph LR
 | Layer | Component           | Mô tả                                  |
 | ----- | ------------------- | -------------------------------------- |
 | UI    | TaskStore (Zustand) | Quản lý state cục bộ                   |
-| UI    | useQueue Hook       | Interface React hook                   |
+| UI    | useWorker Hook       | Interface React hook                   |
 | BG    | QueueManager        | Lên lịch tác vụ, kiểm soát concurrency |
 | BG    | EngineHub           | Engine router/registry                 |
 | BG    | PersistenceManager  | IndexedDB persistence                  |
@@ -414,7 +414,7 @@ A: Đảm bảo gọi `start(platformId, identifier)` sau khi thêm tác vụ.
 A: Xác minh `persistenceManager` đã được khởi tạo. Kiểm tra quyền IndexedDB.
 
 **Q: React hook không cập nhật**
-A: Đảm bảo store của bạn được truyền đúng vào tham số funcs của `useQueue`.
+A: Đảm bảo store của bạn được truyền đúng vào tham số funcs của `useWorker`.
 
 **Q: Engine không tìm thấy**
 A: Đăng ký engine của bạn với `setupBackgroundEngine()` trước khi sử dụng.
