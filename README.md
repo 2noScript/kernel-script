@@ -77,11 +77,11 @@ bun install
 bun dev
 ```
 
-| File                                                                         | Description                     |
-| ---------------------------------------------------------------------------- | ------------------------------- |
-| [`example/src/background.ts`](example/src/background.ts)                     | Engine setup                    |
-| [`example/src/hooks/use-task-queue.ts`](example/src/hooks/use-task-queue.ts) | Queue hook usage                |
-| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store với IndexedDB persistence |
+| File                                                                         | Description                      |
+| ---------------------------------------------------------------------------- | -------------------------------- |
+| [`example/src/background.ts`](example/src/background.ts)                     | Engine setup                     |
+| [`example/src/hooks/use-task-queue.ts`](example/src/hooks/use-task-queue.ts) | Queue hook usage                 |
+| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store with IndexedDB persistence |
 
 ## Features
 
@@ -258,7 +258,7 @@ function TaskQueue() {
 // See: example/src/hooks/use-task-queue.ts
 ```
 
-### Store với Persistence
+### Store with Persistence
 
 ```typescript
 import { createTaskStore, createIndexedDBStorage } from 'kernel-script';
@@ -422,8 +422,8 @@ A: Ensure you're importing from `dist/` after building: `import { ... } from 'ke
 **Q: TypeScript errors on import**
 A: Make sure to install peer dependencies: `npm install react react-dom`
 
-**Q: Không biết bắt đầu từ đâu?**
-A: Xem thư mục [`example/`](example/) để xem implementation hoàn chỉnh.
+**Q: Where do I start?**
+A: Check the [`example/`](example/) folder for a complete implementation.
 
 ## Contributing
 
