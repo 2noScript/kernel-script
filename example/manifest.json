@@ -25,11 +25,7 @@
   "permissions": [
     "storage",
     "alarms",
-    "sidePanel",
-    "activeTab",
-    "scripting",
-    "cookies"
-
+    "activeTab"
   ],
   "host_permissions": [
     "<all_urls>"
