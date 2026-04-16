@@ -41,7 +41,7 @@ bun add kernel-script
 
 ```typescript
 import {
-  setupBackgroundEngine,
+  setupKernelScript,
   registerAllEngines,
   useWorker,
   createTaskStore,
@@ -57,7 +57,7 @@ const myEngine = {
 };
 
 // 2. Khởi tạo trong background script
-setupBackgroundEngine({ 'my-platform': myEngine });
+setupKernelScript({ 'my-platform': myEngine });
 
 // 3. Tạo store và sử dụng hook trong React
 const taskStore = createTaskStore({ name: 'my-tasks' });
@@ -202,7 +202,7 @@ bun add kernel-script
 ### Thiết lập cơ bản
 
 ```typescript
-import { setupBackgroundEngine, registerAllEngines } from 'kernel-script';
+import { setupKernelScript, registerAllEngines } from 'kernel-script';
 import type { BaseEngine, Task, EngineResult } from 'kernel-script';
 
 // Định nghĩa engine tùy chỉnh của bạn
@@ -226,7 +226,7 @@ const myEngine: BaseEngine = {
 };
 
 // Khởi tạo trong background script của bạn
-setupBackgroundEngine({ 'my-platform': myEngine });
+setupKernelScript({ 'my-platform': myEngine });
 
 // Đăng ký tất cả built-in engines (tùy chọn)
 registerAllEngines();
@@ -328,7 +328,7 @@ queueManager.start('my-platform', 'default');
 | `QueueManager`                   | Class quản lý hàng đợi chính                |
 | `getQueueManager()`              | Lấy singleton queue manager                 |
 | `TaskContext`                    | Context để thực thi tác vụ với abort signal |
-| `setupBackgroundEngine(engines)` | Khởi tạo background engine                  |
+| `setupKernelScript(engines)` | Khởi tạo background engine                  |
 | `engineHub`                      | Registry của các engines                    |
 | `persistenceManager`             | Lớp persistence                             |
 | `registerAllEngines()`           | Đăng ký tất cả built-in engines             |
@@ -417,7 +417,7 @@ A: Xác minh `persistenceManager` đã được khởi tạo. Kiểm tra quyền
 A: Đảm bảo store của bạn được truyền đúng vào tham số funcs của `useWorker`.
 
 **Q: Engine không tìm thấy**
-A: Đăng ký engine của bạn với `setupBackgroundEngine()` trước khi sử dụng.
+A: Đăng ký engine của bạn với `setupKernelScript()` trước khi sử dụng.
 
 **Q: "Cannot read property X of undefined"**
 A: Đảm bảo import từ `dist/` sau khi build: `import { ... } from 'kernel-script'`

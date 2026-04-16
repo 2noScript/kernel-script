@@ -1,6 +1,6 @@
 import { engines } from '@/engines';
-import { setupBackgroundEngine } from 'kernel-script';
+import { setupKernelScript } from 'kernel-script';
 
-setupBackgroundEngine(engines, {
+setupKernelScript(engines, {
   debug: true,
 });

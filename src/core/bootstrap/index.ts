@@ -11,7 +11,7 @@ export type SetupOptions = {
   storageKey?: string;
 };
 
-export const setupBackgroundEngine = (
+export const setupKernelScript = (
   engines: Record<string, BaseEngine>,
   options: SetupOptions = {}
 ) => {

@@ -41,7 +41,7 @@ bun add kernel-script
 
 ```typescript
 import {
-  setupBackgroundEngine,
+  setupKernelScript,
   registerAllEngines,
   useWorker,
   createTaskStore,
@@ -57,7 +57,7 @@ const myEngine = {
 };
 
 // 2. Initialize in background script
-setupBackgroundEngine({ 'my-platform': myEngine });
+setupKernelScript({ 'my-platform': myEngine });
 
 // 3. Create store and use hook in React
 const taskStore = createTaskStore({ name: 'my-tasks' });
@@ -202,7 +202,7 @@ bun add kernel-script
 ### Basic Setup
 
 ```typescript
-import { setupBackgroundEngine, registerAllEngines } from 'kernel-script';
+import { setupKernelScript, registerAllEngines } from 'kernel-script';
 import type { BaseEngine, Task, EngineResult } from 'kernel-script';
 
 // Define your custom engine
@@ -226,7 +226,7 @@ const myEngine: BaseEngine = {
 };
 
 // Initialize in your background script
-setupBackgroundEngine({ 'my-platform': myEngine });
+setupKernelScript({ 'my-platform': myEngine });
 
 // Optionally register all built-in engines
 registerAllEngines();
@@ -328,7 +328,7 @@ queueManager.start('my-platform', 'default');
 | `QueueManager`                   | Main queue manager class                     |
 | `getQueueManager()`              | Get queue manager singleton                  |
 | `TaskContext`                    | Context for task execution with abort signal |
-| `setupBackgroundEngine(engines)` | Initialize background engine                 |
+| `setupKernelScript(engines)` | Initialize background engine                 |
 | `engineHub`                      | Engine registry                              |
 | `persistenceManager`             | Persistence layer                            |
 | `registerAllEngines()`           | Register all built-in engines                |
@@ -417,7 +417,7 @@ A: Verify `persistenceManager` is initialized. Check IndexedDB permissions.
 A: Ensure your store is passed correctly to `useWorker` funcs parameter.
 
 **Q: Engine not found**
-A: Register your engine with `setupBackgroundEngine()` before using it.
+A: Register your engine with `setupKernelScript()` before using it.
 
 **Q: "Cannot read property X of undefined"**
 A: Ensure you're importing from `dist/` after building: `import { ... } from 'kernel-script'`
