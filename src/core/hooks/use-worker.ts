@@ -16,15 +16,15 @@ interface Funcs {
   getTaskConfig: () => TaskConfig;
 }
 
-export interface QueueHookConfig {
+export interface WorkerConfig {
   keycard: string;
   getIdentifier: () => string | undefined;
   funcs: Funcs;
   debug?: boolean;
 }
 
-export function useQueue(config: QueueHookConfig) {
-  return function initQueue() {
+export function useWorker(config: WorkerConfig) {
+  return function initWorker() {
     const { keycard, getIdentifier, funcs, debug = false } = config;
 
     const debugLog = (...args: unknown[]) => {
@@ -59,7 +59,6 @@ export function useQueue(config: QueueHookConfig) {
       if (needsSync) {
         lastInitializedRef.current = currentId;
         debugLog(`[HOOK] SYNC: Initial sync for ${keycard}/${identifier}`);
-        // Perform initial SYNC with background
         safeSendMessage(
           {
             type: 'QUEUE_COMMAND',
@@ -103,7 +102,6 @@ export function useQueue(config: QueueHookConfig) {
         if (message.type === 'QUEUE_EVENT') {
           const { event, keycard: pid, identifier: pjid, data } = message;
 
-          // Robust check: handle null, undefined, empty string as equivalent for identifiers
           const isPlatformMatch = pid === keycard || pid === '*';
           const isIdentifierMatch = (pjid || '') === (identifier || '') || pid === '*';
 
@@ -233,8 +231,6 @@ export function useQueue(config: QueueHookConfig) {
       [sendQueueCommand, debugLog]
     );
 
-    // --- HIGH LEVEL ACTIONS ---
-
     const publishTasks = useCallback(
       async (tasks: Task[]) => {
         debugLog(`[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${getIdentifier()}`);
@@ -254,10 +250,8 @@ export function useQueue(config: QueueHookConfig) {
         if (taskIds.length === 0) return;
         debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier()}`);
 
-        // 1. Cancel in background
         await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
 
-        // 2. Delete from store
         funcs.deleteTasks(taskIds);
       },
       [funcs, sendQueueCommand, debugLog]
@@ -268,10 +262,8 @@ export function useQueue(config: QueueHookConfig) {
         if (taskIds.length === 0) return;
         debugLog(`[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
 
-        // 1. Cancel in background if they are currently active
         await sendQueueCommand('CANCEL_TASKS', { taskIds });
 
-        // 2. Update store
         const updates: Record<string, Partial<Task>> = {};
         taskIds.forEach((id) => {
           updates[id] = { status: 'Skipped', isQueued: false };
@@ -287,7 +279,6 @@ export function useQueue(config: QueueHookConfig) {
         if (tasks.length === 0) return;
         debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
 
-        // 1. Reset tasks in store
         tasks.forEach((task) => {
           funcs.updateTask(task.id, {
             status: 'Waiting',
@@ -296,7 +287,6 @@ export function useQueue(config: QueueHookConfig) {
           });
         });
 
-        // 2. Re-add to background
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,

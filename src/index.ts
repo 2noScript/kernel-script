@@ -2,7 +2,7 @@ export { getQueueManager, type QueueOptions, type QueueStatus } from '@/core/que
 export { TaskContext } from '@/core/task-context';
 export type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/types';
 export * from '@/core/store/base-task.store';
-export { useQueue } from '@/core/hooks/use-queue';
+export { useWorker } from '@/core/hooks/use-worker';
 export { setupBackgroundEngine, type SetupOptions } from '@/core/bootstrap';
 export { engineHub } from '@/core/engine-hub';
 export { registerAllEngines } from '@/core/registry';

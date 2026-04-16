@@ -12,7 +12,6 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import {
@@ -28,7 +27,6 @@ import {
   Trash2,
   RotateCcw,
   Play,
-  FolderDown,
   Zap,
   CheckCircle2,
   AlertCircle,
@@ -40,7 +38,6 @@ import {
   History,
   EyeOff,
 } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useState, useRef, memo } from 'react';
@@ -48,158 +45,9 @@ import { useShallow } from 'zustand/react/shallow';
 import StatStatus from '@/components/common/stat-status';
 import type { Task } from 'kernel-script';
 import { useTestTaskStore } from '@/stores/task.store';
-import { useTaskQueue } from '@/hooks/use-task-queue';
+import { useTaskWorker } from '@/hooks/use-task-worker';
 
-const EditablePrompt = memo(function EditablePrompt({
-  value,
-  onSave,
-  disabled,
-}: {
-  value: string;
-  onSave: (val: string) => void;
-  disabled?: boolean;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.setSelectionRange(
-        textareaRef.current.value.length,
-        textareaRef.current.value.length
-      );
-    }
-  }, [isEditing]);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    if (tempValue !== value) {
-      onSave(tempValue);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Escape') {
-      setTempValue(value);
-      setIsEditing(false);
-    }
-  };
-
-  if (isEditing) {
-    return (
-      <Textarea
-        ref={textareaRef}
-        value={tempValue}
-        onChange={(e) => setTempValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="text-[11px] min-h-[80px] max-h-[120px] w-full p-2 bg-background/80 border-none focus-visible:ring-1 focus-visible:ring-primary/10 resize-none font-medium leading-relaxed overflow-y-auto custom-scrollbar shadow-inner"
-      />
-    );
-  }
-
-  return (
-    <div
-      onClick={() => !disabled && setIsEditing(true)}
-      className={cn(
-        'group relative min-h-[80px] max-h-[120px] p-2 rounded-md overflow-y-auto custom-scrollbar',
-        disabled
-          ? 'cursor-not-allowed opacity-60'
-          : 'cursor-text hover:bg-primary/5 transition-colors'
-      )}
-    >
-      <p className="text-[11px] text-foreground/80 font-medium leading-relaxed whitespace-pre-wrap break-words">
-        {value}
-      </p>
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Badge
-          variant="outline"
-          className="text-[8px] font-black uppercase tracking-tighter bg-background/50 border-primary/20 py-0 h-4"
-        >
-          Click to edit
-        </Badge>
-      </div>
-    </div>
-  );
-});
-
-const EditableName = memo(function EditableName({
-  value,
-  onSave,
-  disabled,
-}: {
-  value: string;
-  onSave: (val: string) => void;
-  disabled?: boolean;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setTempValue(value);
-  }, [value]);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    if (tempValue !== value) {
-      onSave(tempValue);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setTempValue(value);
-      setIsEditing(false);
-    } else if (e.key === 'Enter') {
-      handleBlur();
-    }
-  };
-
-  if (isEditing) {
-    return (
-      <Input
-        ref={inputRef}
-        value={tempValue}
-        onChange={(e) => setTempValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="text-[10px] font-black uppercase w-0 min-w-full h-full p-0 bg-transparent border-0 shadow-none outline-none ring-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
-      />
-    );
-  }
-
-  return (
-    <div
-      onClick={() => !disabled && setIsEditing(true)}
-      className={cn(
-        'group relative w-full h-[18px]',
-        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-text'
-      )}
-    >
-      <span
-        className="text-[10px] font-black text-foreground/90 uppercase truncate w-full block"
-        title={value}
-      >
-        {value}
-      </span>
-      {!disabled && (
-        <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Pencil className="w-3 h-3 text-muted-foreground/50" />
-        </div>
-      )}
-    </div>
-  );
-});
 
 const TaskRow = memo(
   function TaskRow({ row, isSelected }: { row: Row<Task>; isSelected: boolean }) {
@@ -263,7 +111,7 @@ export function TaskTable() {
     });
   }, [rawTasks]);
 
-  const queue = useTaskQueue();
+  const queue = useTaskWorker();
 
   useEffect(() => {
     queue.setTaskConfig(taskConfig);
@@ -440,11 +288,7 @@ export function TaskTable() {
         ),
         cell: ({ row }) => (
           <div className="flex flex-col gap-1 py-1">
-            <EditableName
-              value={row.original.name}
-              onSave={(val) => updateTask(row.original.id, { name: val })}
-              disabled={row.original.status !== 'Draft'}
-            />
+            <div>{row.original.name}</div>
             <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-tighter truncate w-full">
               {row.original.payload.model} | {row.original.payload.ratio}
             </span>
