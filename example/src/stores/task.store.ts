@@ -56,57 +56,50 @@ const DEFAULT_CONFIG: ImageGenerationConfig = {
   defaultReferences: [],
 };
 
-const storeCache = new Map<string, any>();
-
 export const getTestTaskStore = (identifier: string) => {
-  if (!storeCache.has(identifier)) {
-    const store = createTaskStore<TestTaskState>({
-      name: `TEST_TASK`,
-      storage: createIndexedDBStorage(`${identifier}`),
-      partialize: (state) => ({
-        config: state.config,
-        referencesStore: state.referencesStore,
-      }),
-      extend: (set, _get) => ({
-        config: DEFAULT_CONFIG,
-        referencesStore: [],
+  return createTaskStore<TestTaskState>({
+    name: `TEST_TASK`,
+    storage: createIndexedDBStorage(`${identifier}`),
+    partialize: (state) => ({
+      config: state.config,
+      referencesStore: state.referencesStore,
+    }),
+    extend: (set, _get) => ({
+      config: DEFAULT_CONFIG,
+      referencesStore: [],
 
-        updateConfig: (updates: Partial<ImageGenerationConfig>) =>
-          set((state: FxGenImageState) => ({
-            config: { ...state.config, ...updates },
-          })),
+      updateConfig: (updates: Partial<ImageGenerationConfig>) =>
+        set((state: FxGenImageState) => ({
+          config: { ...state.config, ...updates },
+        })),
 
-        setReferenceStore: (referencesStore: ReferenceItem[]) => set({ referencesStore }),
+      setReferenceStore: (referencesStore: ReferenceItem[]) => set({ referencesStore }),
 
-        addReferenceStore: (
-          name: string,
-          fifeUrl: string,
-          type: 'upload' | 'generated' = 'upload',
-          prompt?: string,
-          dimensions?: { width: number; height: number }
-        ) =>
-          set((state: FxGenImageState) => {
-            if (state.referencesStore.some((r) => r.name === name)) {
-              return state;
-            }
-            return {
-              referencesStore: [
-                ...state.referencesStore,
-                { name, fifeUrl, type, prompt, dimensions },
-              ],
-            };
-          }),
+      addReferenceStore: (
+        name: string,
+        fifeUrl: string,
+        type: 'upload' | 'generated' = 'upload',
+        prompt?: string,
+        dimensions?: { width: number; height: number }
+      ) =>
+        set((state: FxGenImageState) => {
+          if (state.referencesStore.some((r) => r.name === name)) {
+            return state;
+          }
+          return {
+            referencesStore: [
+              ...state.referencesStore,
+              { name, fifeUrl, type, prompt, dimensions },
+            ],
+          };
+        }),
 
-        removeReferenceStore: (name: string) =>
-          set((state: FxGenImageState) => ({
-            referencesStore: state.referencesStore.filter((r) => r.name !== name),
-          })),
-      }),
-    });
-    storeCache.set(identifier, store);
-  }
-
-  return storeCache.get(identifier);
+      removeReferenceStore: (name: string) =>
+        set((state: FxGenImageState) => ({
+          referencesStore: state.referencesStore.filter((r) => r.name !== name),
+        })),
+    }),
+  });
 };
 
 export const useTestTaskStore = getTestTaskStore(getIdentifierFaker());

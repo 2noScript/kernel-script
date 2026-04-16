@@ -11,10 +11,17 @@ const aliasPlugin = {
   setup(build) {
     build.onResolve({ filter: /^@/ }, (args) => {
       const newPath = args.path.replace('@', 'src');
+
       const dtsPath = resolve(__dirname, newPath + '.d.ts');
       const tsPath = resolve(__dirname, newPath + '.ts');
-      const path = existsSync(dtsPath) ? dtsPath : tsPath;
-      return { path, namespace: 'file' };
+      if (existsSync(dtsPath)) return { path: dtsPath, namespace: 'file' };
+      if (existsSync(tsPath)) return { path: tsPath, namespace: 'file' };
+
+      const dirPath = resolve(__dirname, newPath);
+      const indexTsPath = resolve(dirPath, 'index.ts');
+      const indexDtsPath = resolve(dirPath, 'index.d.ts');
+      if (existsSync(indexTsPath)) return { path: indexTsPath, namespace: 'file' };
+      if (existsSync(indexDtsPath)) return { path: indexDtsPath, namespace: 'file' };
     });
   },
 };
