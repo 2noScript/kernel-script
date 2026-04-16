@@ -3,12 +3,12 @@ import type { BaseEngine } from '@/core/types';
 export class EngineHub {
   private engines: Map<string, BaseEngine> = new Map();
 
-  register(platformId: string, engine: BaseEngine): void {
-    this.engines.set(platformId, engine);
+  register(keycard: string, engine: BaseEngine): void {
+    this.engines.set(keycard, engine);
   }
 
-  get(platformId: string): BaseEngine | undefined {
-    return this.engines.get(platformId);
+  get(keycard: string): BaseEngine | undefined {
+    return this.engines.get(keycard);
   }
 
   getAll(): Map<string, BaseEngine> {

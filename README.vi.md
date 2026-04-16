@@ -350,14 +350,14 @@ queueManager.start('my-platform', 'default');
 
 | Thao tác                                      | Mô tả                                |
 | --------------------------------------------- | ------------------------------------ |
-| `add(platformId, identifier, task)`           | Thêm 1 tác vụ vào hàng đợi           |
-| `addMany(platformId, identifier, tasks)`      | Thêm nhiều tác vụ                    |
-| `start(platformId, identifier)`               | Bắt đầu xử lý hàng đợi               |
-| `pause(platformId, identifier)`               | Tạm dừng (không hủy tác vụ)          |
-| `resume(platformId, identifier)`              | Tiếp tục xử lý                       |
-| `stop(platformId, identifier)`                | Dừng và halt tất cả tác vụ đang chạy |
-| `getStatus(platformId, identifier)`           | Lấy trạng thái hàng đợi              |
-| `retryTasks(platformId, identifier, taskIds)` | Thử lại các tác vụ thất bại          |
+| `add(keycard, identifier, task)`           | Thêm 1 tác vụ vào hàng đợi           |
+| `addMany(keycard, identifier, tasks)`      | Thêm nhiều tác vụ                    |
+| `start(keycard, identifier)`               | Bắt đầu xử lý hàng đợi               |
+| `pause(keycard, identifier)`               | Tạm dừng (không hủy tác vụ)          |
+| `resume(keycard, identifier)`              | Tiếp tục xử lý                       |
+| `stop(keycard, identifier)`                | Dừng và halt tất cả tác vụ đang chạy |
+| `getStatus(keycard, identifier)`           | Lấy trạng thái hàng đợi              |
+| `retryTasks(keycard, identifier, taskIds)` | Thử lại các tác vụ thất bại          |
 
 ## Các kiểu dữ liệu
 
@@ -408,7 +408,7 @@ interface EngineResult {
 ### Các vấn đề thường gặp
 
 **Q: Tác vụ không thực thi sau khi thêm**
-A: Đảm bảo gọi `start(platformId, identifier)` sau khi thêm tác vụ.
+A: Đảm bảo gọi `start(keycard, identifier)` sau khi thêm tác vụ.
 
 **Q: Hàng đợi không lưu sau khi khởi động lại extension**
 A: Xác minh `persistenceManager` đã được khởi tạo. Kiểm tra quyền IndexedDB.

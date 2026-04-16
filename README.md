@@ -350,14 +350,14 @@ queueManager.start('my-platform', 'default');
 
 | Operation                                     | Description                   |
 | --------------------------------------------- | ----------------------------- |
-| `add(platformId, identifier, task)`           | Add 1 task to queue           |
-| `addMany(platformId, identifier, tasks)`      | Add multiple tasks            |
-| `start(platformId, identifier)`               | Start processing queue        |
-| `pause(platformId, identifier)`               | Pause (don't cancel tasks)    |
-| `resume(platformId, identifier)`              | Resume processing             |
-| `stop(platformId, identifier)`                | Stop + halt all running tasks |
-| `getStatus(platformId, identifier)`           | Get queue status              |
-| `retryTasks(platformId, identifier, taskIds)` | Retry failed tasks            |
+| `add(keycard, identifier, task)`           | Add 1 task to queue           |
+| `addMany(keycard, identifier, tasks)`      | Add multiple tasks            |
+| `start(keycard, identifier)`               | Start processing queue        |
+| `pause(keycard, identifier)`               | Pause (don't cancel tasks)    |
+| `resume(keycard, identifier)`              | Resume processing             |
+| `stop(keycard, identifier)`                | Stop + halt all running tasks |
+| `getStatus(keycard, identifier)`           | Get queue status              |
+| `retryTasks(keycard, identifier, taskIds)` | Retry failed tasks            |
 
 ## Types
 
@@ -408,7 +408,7 @@ interface EngineResult {
 ### Common Issues
 
 **Q: Tasks not executing after adding**
-A: Make sure to call `start(platformId, identifier)` after adding tasks.
+A: Make sure to call `start(keycard, identifier)` after adding tasks.
 
 **Q: Queue not persisting after extension restart**
 A: Verify `persistenceManager` is initialized. Check IndexedDB permissions.
