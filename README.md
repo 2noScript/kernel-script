@@ -67,6 +67,22 @@ const { start, pause, tasks, pendingCount } = useQueue({
 });
 ```
 
+## Examples
+
+Xem thư mục [`example/`](example/) để xem project hoàn chỉnh sử dụng kernel-script.
+
+```bash
+cd example
+bun install
+bun dev
+```
+
+| File                                                                         | Description                     |
+| ---------------------------------------------------------------------------- | ------------------------------- |
+| [`example/src/background.ts`](example/src/background.ts)                     | Engine setup                    |
+| [`example/src/hooks/use-task-queue.ts`](example/src/hooks/use-task-queue.ts) | Queue hook usage                |
+| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store với IndexedDB persistence |
+
 ## Features
 
 - **Task Queue Management** - Queue, schedule, and execute tasks with configurable concurrency
@@ -210,6 +226,7 @@ setupBackgroundEngine({ 'my-platform': myEngine });
 
 // Optionally register all built-in engines
 registerAllEngines();
+// See: example/src/background.ts
 ```
 
 ### React Hook
@@ -238,6 +255,28 @@ function TaskQueue() {
     </div>
   );
 }
+// See: example/src/hooks/use-task-queue.ts
+```
+
+### Store với Persistence
+
+```typescript
+import { createTaskStore, createIndexedDBStorage } from 'kernel-script';
+
+const store = createTaskStore({
+  name: 'my-tasks',
+  storage: createIndexedDBStorage('my-storage'),
+  partialize: (state) => ({
+    config: state.config,
+  }),
+  extend: (set, _get) => ({
+    config: { theme: 'light' },
+    updateConfig: (updates) => set((state) => ({
+      config: { ...state.config, ...updates },
+    })),
+  })),
+});
+// See: example/src/stores/task.store.ts
 ```
 
 ### Advanced
@@ -382,6 +421,9 @@ A: Ensure you're importing from `dist/` after building: `import { ... } from 'ke
 
 **Q: TypeScript errors on import**
 A: Make sure to install peer dependencies: `npm install react react-dom`
+
+**Q: Không biết bắt đầu từ đâu?**
+A: Xem thư mục [`example/`](example/) để xem implementation hoàn chỉnh.
 
 ## Contributing
 
