@@ -81,11 +81,11 @@ bun install
 bun dev
 ```
 
-| File                                                                         | Description                      |
-| ---------------------------------------------------------------------------- | -------------------------------- |
-| [`example/src/background.ts`](example/src/background.ts)                     | Engine setup                     |
+| File                                                                           | Description                      |
+| ------------------------------------------------------------------------------ | -------------------------------- |
+| [`example/src/background.ts`](example/src/background.ts)                       | Engine setup                     |
 | [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Queue hook usage                 |
-| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store with IndexedDB persistence |
+| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)         | Store with IndexedDB persistence |
 
 ## Features
 
@@ -376,7 +376,6 @@ interface Task {
   output?: unknown;
   errorMessage?: string;
   isQueued?: boolean;
-  isFlagged?: boolean;
   createAt?: number;
   updateAt?: number;
 }

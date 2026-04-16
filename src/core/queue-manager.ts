@@ -433,23 +433,6 @@ export class QueueManager {
       return;
     }
 
-    // Skip flagged tasks
-    if (task.isFlagged) {
-      this.debugLog(`[QueueManager] Task ${task.id} is flagged. Skipping.`);
-      const taskIndex = entry.tasks.findIndex((t) => t.id === task.id);
-      const taskEntry = entry.tasks[taskIndex];
-      if (taskIndex !== -1 && taskEntry) {
-        entry.tasks[taskIndex] = {
-          ...taskEntry,
-          status: 'Skipped',
-          isQueued: false,
-        };
-        this.updateTasks(keycard, identifier, entry.tasks);
-      }
-      this.notifyStatusChange(keycard, identifier);
-      return;
-    }
-
     const taskIndex = entry.tasks.findIndex((t) => t.id === task.id);
     if (taskIndex === -1) {
       this.debugLog(`[QueueManager] Task ${task.id} was removed. Skipping execution.`);

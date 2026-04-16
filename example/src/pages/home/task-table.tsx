@@ -47,8 +47,6 @@ import type { Task } from 'kernel-script';
 import { useTestTaskStore } from '@/stores/task.store';
 import { useTaskWorker } from '@/hooks/use-task-worker';
 
-
-
 const TaskRow = memo(
   function TaskRow({ row, isSelected }: { row: Row<Task>; isSelected: boolean }) {
     return (
@@ -164,18 +162,16 @@ export function TaskTable() {
 
   const handleToggleFlagSelected = useCallback(async () => {
     const selectedTasks = tasks.filter((t: Task) => selectedIds.includes(t.id));
-    const allFlagged = selectedTasks.every((t: Task) => t.isFlagged);
+    const allSkipped = selectedTasks.every((t: Task) => t.status === 'Skipped');
 
-    if (allFlagged) {
-      // Unflagging: direct store update
+    if (allSkipped) {
       const updates: Record<string, Partial<Task>> = {};
       selectedIds.forEach((id: string) => {
-        updates[id] = { isFlagged: false };
+        updates[id] = { status: 'Draft' };
       });
       updateTasks(updates);
       toast.success(`Unflagged ${selectedIds.length} task(s)`);
     } else {
-      // Flagging: delegate to taskWorker to handle cancellation & state
       await taskWorker.skipTaskIds(selectedIds);
       toast.success(`Skipped ${selectedIds.length} task(s)`);
     }
@@ -184,7 +180,7 @@ export function TaskTable() {
   const handleResetSelected = useCallback(() => {
     const updates: Record<string, Partial<Task>> = {};
     selectedIds.forEach((id: string) => {
-      updates[id] = { status: 'Draft', isFlagged: false };
+      updates[id] = { status: 'Draft' };
     });
     updateTasks(updates);
     toast.success(`Reset ${selectedIds.length} task(s) to Draft`);
@@ -360,7 +356,6 @@ export function TaskTable() {
                     e.stopPropagation();
                     updateTask(row.original.id, {
                       status: 'Draft',
-                      isFlagged: false,
                     });
                   }}
                 >
@@ -393,7 +388,6 @@ export function TaskTable() {
                   <Play className="w-3.5 h-3.5 fill-current" />
                 )}
               </Button>
-          
             </div>
           </div>
         ),

@@ -81,11 +81,11 @@ bun install
 bun dev
 ```
 
-| File                                                                         | Mô tả                           |
-| ---------------------------------------------------------------------------- | ------------------------------- |
-| [`example/src/background.ts`](example/src/background.ts)                     | Thiết lập engine                |
+| File                                                                           | Mô tả                           |
+| ------------------------------------------------------------------------------ | ------------------------------- |
+| [`example/src/background.ts`](example/src/background.ts)                       | Thiết lập engine                |
 | [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Cách sử dụng queue hook         |
-| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store với IndexedDB persistence |
+| [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)         | Store với IndexedDB persistence |
 
 ## Tính năng
 
@@ -376,7 +376,6 @@ interface Task {
   output?: unknown;
   errorMessage?: string;
   isQueued?: boolean;
-  isFlagged?: boolean;
   createAt?: number;
   updateAt?: number;
 }

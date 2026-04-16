@@ -8,7 +8,6 @@ export type Task = {
   output?: unknown;
   errorMessage?: string;
   isQueued?: boolean;
-  isFlagged?: boolean;
   createAt?: number;
   updateAt?: number;
   [key: string]: unknown;
