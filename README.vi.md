@@ -84,7 +84,7 @@ bun dev
 | File                                                                         | Mô tả                           |
 | ---------------------------------------------------------------------------- | ------------------------------- |
 | [`example/src/background.ts`](example/src/background.ts)                     | Thiết lập engine                |
-| [`example/src/hooks/use-task-queue.ts`](example/src/hooks/use-task-queue.ts) | Cách sử dụng queue hook         |
+| [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Cách sử dụng queue hook         |
 | [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store với IndexedDB persistence |
 
 ## Tính năng
@@ -259,7 +259,7 @@ function TaskQueue() {
     </div>
   );
 }
-// See: example/src/hooks/use-task-queue.ts
+// See: example/src/hooks/use-task-worker.ts
 ```
 
 ### Store với Persistence

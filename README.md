@@ -84,7 +84,7 @@ bun dev
 | File                                                                         | Description                      |
 | ---------------------------------------------------------------------------- | -------------------------------- |
 | [`example/src/background.ts`](example/src/background.ts)                     | Engine setup                     |
-| [`example/src/hooks/use-task-queue.ts`](example/src/hooks/use-task-queue.ts) | Queue hook usage                 |
+| [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Queue hook usage                 |
 | [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)       | Store with IndexedDB persistence |
 
 ## Features
@@ -259,7 +259,7 @@ function TaskQueue() {
     </div>
   );
 }
-// See: example/src/hooks/use-task-queue.ts
+// See: example/src/hooks/use-task-worker.ts
 ```
 
 ### Store with Persistence

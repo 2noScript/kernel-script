@@ -111,11 +111,11 @@ export function TaskTable() {
     });
   }, [rawTasks]);
 
-  const queue = useTaskWorker();
+  const taskWorker = useTaskWorker();
 
   useEffect(() => {
-    queue.setTaskConfig(taskConfig);
-  }, [queue.setTaskConfig, taskConfig]);
+    taskWorker.setTaskConfig(taskConfig);
+  }, [taskWorker.setTaskConfig, taskConfig]);
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -138,7 +138,7 @@ export function TaskTable() {
       name: `Task ${tasks.length + 1}`,
       status: 'Draft',
       progress: 0,
-      isQueued: false,
+      istaskWorkerd: false,
       payload: {
         model: config.model,
         ratio: config.ratio,
@@ -158,9 +158,9 @@ export function TaskTable() {
   }, [tasks.length, config.model, config.ratio, addTask]);
 
   const handleDeleteSelected = useCallback(async () => {
-    await queue.deleteTasks(selectedIds);
+    await taskWorker.deleteTasks(selectedIds);
     toast.success(`Deleted ${selectedIds.length} task(s)`);
-  }, [selectedIds, queue]);
+  }, [selectedIds, taskWorker]);
 
   const handleToggleFlagSelected = useCallback(async () => {
     const selectedTasks = tasks.filter((t: Task) => selectedIds.includes(t.id));
@@ -175,11 +175,11 @@ export function TaskTable() {
       updateTasks(updates);
       toast.success(`Unflagged ${selectedIds.length} task(s)`);
     } else {
-      // Flagging: delegate to queue to handle cancellation & state
-      await queue.skipTaskIds(selectedIds);
+      // Flagging: delegate to taskWorker to handle cancellation & state
+      await taskWorker.skipTaskIds(selectedIds);
       toast.success(`Skipped ${selectedIds.length} task(s)`);
     }
-  }, [selectedIds, tasks, updateTasks, queue]);
+  }, [selectedIds, tasks, updateTasks, taskWorker]);
 
   const handleResetSelected = useCallback(() => {
     const updates: Record<string, Partial<Task>> = {};
@@ -194,21 +194,21 @@ export function TaskTable() {
     console.log('handleStartOrStopTasks');
     if (!isRunning) {
       const waitingTasks = tasks.filter((t: Task) => t.status === 'Waiting');
-      if (waitingTasks.length > 0) await queue.start();
+      if (waitingTasks.length > 0) await taskWorker.start();
     } else {
-      await queue.stop();
+      await taskWorker.stop();
     }
-  }, [queue, tasks, isRunning]);
+  }, [taskWorker, tasks, isRunning]);
 
   const handlePublishTasks = useCallback(async () => {
     const draftTasks = tasks.filter(
       (t: Task) => t.status === 'Draft' && selectedIds.includes(t.id)
     );
-    await queue.publishTasks(draftTasks);
+    await taskWorker.publishTasks(draftTasks);
     toggleSelectAll(selectedIds);
 
-    toast.success(`Published ${draftTasks.length} task(s) to queue`);
-  }, [tasks, selectedIds, queue, toggleSelectAll]);
+    toast.success(`Published ${draftTasks.length} task(s) to taskWorker`);
+  }, [tasks, selectedIds, taskWorker, toggleSelectAll]);
 
   const stats = useMemo(() => {
     const counts = {
@@ -400,7 +400,7 @@ export function TaskTable() {
         size: 140,
       },
     ],
-    [toggleSelect, toggleSelectAll, updateTask, config.referenceCount, queue, isRunning]
+    [toggleSelect, toggleSelectAll, updateTask, config.referenceCount, taskWorker, isRunning]
   );
 
   const table = useReactTable({
