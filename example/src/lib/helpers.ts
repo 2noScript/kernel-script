@@ -6,10 +6,11 @@
  * @returns A complete extension URL string generated via chrome.runtime.getURL.
  */
 export function buildPageUrl(
-  page: string = "index.html",
   route: string = "",
   params: Record<string, string | number | boolean | undefined> = {}
 ): string {
+ 
+  const  page: string = "index.html"
   const urlParams = new URLSearchParams();
 
   // Iterates through the params object and appends valid values to the query string

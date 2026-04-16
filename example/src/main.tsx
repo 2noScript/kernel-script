@@ -15,7 +15,7 @@ function AppContent() {
   return (
     <>
       <Routes>
-        <Route path="/bing" element={<HomePage />} />
+        <Route path="/Home" element={<HomePage />} />
         <Route path="/" element={<AppPopup />} />
       </Routes>
       {isLoading && <LoadingOverlay message="Loading..." />}

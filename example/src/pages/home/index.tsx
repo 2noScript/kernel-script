@@ -1,5 +1,11 @@
+import { TaskTable } from '@/pages/home/task-table';
+
 function HomePage() {
-    return <div> this is HomePage</div>;
+  return (
+    <div >
+      <TaskTable />
+    </div>
+  );
 }
 
 export default HomePage;
