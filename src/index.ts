@@ -3,4 +3,4 @@ export type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/types';
 export * from '@/core/store/base-task.store';
 export { useWorker } from '@/core/hooks/use-worker';
 export { setupKernelScript, type SetupOptions } from '@/core/bootstrap';
-export { registerAllEngines } from '@/core/registry';
+export { registerEngines } from '@/core/registry';

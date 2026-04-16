@@ -42,7 +42,7 @@ bun add kernel-script
 ```typescript
 import {
   setupKernelScript,
-  registerAllEngines,
+  registerEngines,
   useWorker,
   createTaskStore,
 } from 'kernel-script';
@@ -202,7 +202,7 @@ bun add kernel-script
 ### Basic Setup
 
 ```typescript
-import { setupKernelScript, registerAllEngines } from 'kernel-script';
+import { setupKernelScript, registerEngines } from 'kernel-script';
 import type { BaseEngine, Task, EngineResult } from 'kernel-script';
 
 // Define your custom engine
@@ -229,7 +229,7 @@ const myEngine: BaseEngine = {
 setupKernelScript({ 'my-platform': myEngine });
 
 // Optionally register all built-in engines
-registerAllEngines();
+registerEngines();
 // See: example/src/background.ts
 ```
 
@@ -331,7 +331,7 @@ queueManager.start('my-platform', 'default');
 | `setupKernelScript(engines)` | Initialize background engine                 |
 | `engineHub`                      | Engine registry                              |
 | `persistenceManager`             | Persistence layer                            |
-| `registerAllEngines()`           | Register all built-in engines                |
+| `registerEngines()`           | Register all built-in engines                |
 | `sleep(ms)`                      | Promise-based sleep function                 |
 
 ### Hooks

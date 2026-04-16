@@ -1,4 +1,3 @@
-import { QUEUE_COMMAND } from '@/core/commands';
 import type { CommandPayload, CommandHandlerDeps } from '@/core/bootstrap/command-handler';
 import { createCommandHandler } from '@/core/bootstrap/command-handler';
 import type { Task } from '@/core/types';

@@ -42,7 +42,7 @@ bun add kernel-script
 ```typescript
 import {
   setupKernelScript,
-  registerAllEngines,
+  registerEngines,
   useWorker,
   createTaskStore,
 } from 'kernel-script';
@@ -202,7 +202,7 @@ bun add kernel-script
 ### Thiết lập cơ bản
 
 ```typescript
-import { setupKernelScript, registerAllEngines } from 'kernel-script';
+import { setupKernelScript, registerEngines } from 'kernel-script';
 import type { BaseEngine, Task, EngineResult } from 'kernel-script';
 
 // Định nghĩa engine tùy chỉnh của bạn
@@ -229,7 +229,7 @@ const myEngine: BaseEngine = {
 setupKernelScript({ 'my-platform': myEngine });
 
 // Đăng ký tất cả built-in engines (tùy chọn)
-registerAllEngines();
+registerEngines();
 // See: example/src/background.ts
 ```
 
@@ -331,7 +331,7 @@ queueManager.start('my-platform', 'default');
 | `setupKernelScript(engines)` | Khởi tạo background engine                  |
 | `engineHub`                      | Registry của các engines                    |
 | `persistenceManager`             | Lớp persistence                             |
-| `registerAllEngines()`           | Đăng ký tất cả built-in engines             |
+| `registerEngines()`           | Đăng ký tất cả built-in engines             |
 | `sleep(ms)`                      | Hàm sleep dạng Promise                      |
 
 ### Hooks

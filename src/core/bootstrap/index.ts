@@ -1,6 +1,6 @@
 import type { BaseEngine } from '@/core/types';
 import { getQueueManager } from '@/core/managers/queue.manager';
-import { registerAllEngines } from '@/core/registry';
+import { registerEngines } from '@/core/registry';
 import { createBroadcast } from '@/core/bootstrap/broadcast';
 import { createHeartbeatHandler } from '@/core/bootstrap/heartbeat';
 import { createMessageHandler } from '@/core/bootstrap/message-handler';
@@ -16,7 +16,7 @@ export const setupKernelScript = (
 ) => {
   const { debug = false, storageKey } = options;
   const queueManager = getQueueManager({ debug, storageKey });
-  registerAllEngines(engines, queueManager);
+  registerEngines(engines, queueManager);
 
   const debugLog = (...args: unknown[]) => {
     if (debug) console.log(...args);
