@@ -1,5 +1,5 @@
 import type { BaseEngine } from '@/core/types';
-import type { QueueManager } from '@/core/queue-manager';
+import type { QueueManager } from '@/core/managers/queue.manager';
 
 export function registerAllEngines(
   platformEngines: Record<string, BaseEngine>,

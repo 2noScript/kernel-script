@@ -1,9 +1,9 @@
 import PQueue from 'p-queue';
 import type { Task, TaskConfig } from '@/core/types';
 import type { BaseEngine, EngineResult } from '@/core/types';
-import { PersistenceManager, type SerializedQueueState } from '@/core/persistence-manager';
+import { PersistenceManager, type SerializedQueueState } from '@/core/managers/persistence.manager';
 import { engineHub } from '@/core/engine-hub';
-import { TaskContext } from '@/core/task-context';
+import { TaskContext } from '@/core/contexts/task.context';
 import { sleep } from '@/core/helper';
 
 export interface QueueStatus {

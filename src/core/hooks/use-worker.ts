@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import type { Task, TaskConfig } from '@/core/types';
-import { type QueueStatus } from '@/core/queue-manager';
+import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND } from '@/core/commands';
 
 interface Funcs {

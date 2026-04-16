@@ -1,5 +1,5 @@
 import { QUEUE_COMMAND } from '@/core/commands';
-import type { QueueManager } from '@/core/queue-manager';
+import type { QueueManager } from '@/core/managers/queue.manager';
 import type { Task, TaskConfig } from '@/core/types';
 
 export type CommandPayload = {

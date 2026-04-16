@@ -1,6 +1,6 @@
 import { QUEUE_COMMAND } from '@/core/commands';
 import type { BaseEngine } from '@/core/types';
-import { getQueueManager, type QueueManager } from '@/core/queue-manager';
+import { getQueueManager, type QueueManager } from '@/core/managers/queue.manager';
 import { registerAllEngines } from '@/core/registry';
 import { createBroadcast } from '@/core/bootstrap/broadcast';
 import { createHeartbeatHandler } from '@/core/bootstrap/heartbeat';
