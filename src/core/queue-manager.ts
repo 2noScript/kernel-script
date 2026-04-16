@@ -167,7 +167,7 @@ export class QueueManager {
 
   async add(keycard: string, identifier: string, task: Task): Promise<void> {
     this.debugLog(
-      `[DEBUG] ADD task ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${identifier || 'default'}`
+      `[DEBUG] ADD task ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${identifier }`
     );
     const entry = this.getOrCreateQueue(keycard, identifier);
     const { queue, tasks, queuedIds } = entry;
@@ -196,7 +196,7 @@ export class QueueManager {
 
   async addMany(keycard: string, identifier: string, newTasks: Task[]): Promise<void> {
     this.debugLog(
-      `[DEBUG] ADD_MANY ${newTasks.length} tasks to ${keycard}/${identifier || 'default'}`
+      `[DEBUG] ADD_MANY ${newTasks.length} tasks to ${keycard}/${identifier }`
     );
     const entry = this.getOrCreateQueue(keycard, identifier);
     const { queue, tasks, queuedIds } = entry;
@@ -226,7 +226,7 @@ export class QueueManager {
   }
 
   async start(keycard: string, identifier: string): Promise<void> {
-    this.debugLog(`[DEBUG] START queue ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] START queue ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -258,7 +258,7 @@ export class QueueManager {
   }
 
   async stop(keycard: string, identifier: string): Promise<void> {
-    this.debugLog(`[DEBUG] STOP queue ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] STOP queue ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -286,7 +286,7 @@ export class QueueManager {
   }
 
   async pause(keycard: string, identifier: string): Promise<void> {
-    this.debugLog(`[DEBUG] PAUSE queue ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] PAUSE queue ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -297,7 +297,7 @@ export class QueueManager {
   }
 
   async resume(keycard: string, identifier: string): Promise<void> {
-    this.debugLog(`[DEBUG] RESUME queue ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] RESUME queue ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -308,7 +308,7 @@ export class QueueManager {
   }
 
   async clear(keycard: string, identifier: string): Promise<void> {
-    this.debugLog(`[DEBUG] CLEAR queue ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] CLEAR queue ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
 
@@ -357,7 +357,7 @@ export class QueueManager {
    * Stops execution AND removes the task from the project entirely.
    */
   async cancelTask(keycard: string, identifier: string, taskId: string): Promise<void> {
-    this.debugLog(`[DEBUG] CANCEL_TASK ${taskId} from ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] CANCEL_TASK ${taskId} from ${keycard}/${identifier }`);
     // Trigger AbortController if it exists
     const controller = this.abortControllers.get(taskId);
     if (controller) {
@@ -377,7 +377,7 @@ export class QueueManager {
   }
 
   getStatus(keycard: string, identifier: string): QueueStatus {
-    this.debugLog(`[DEBUG] GET_STATUS ${keycard}/${identifier || 'default'}`);
+    this.debugLog(`[DEBUG] GET_STATUS ${keycard}/${identifier }`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
 
@@ -399,7 +399,7 @@ export class QueueManager {
     const entry = this.queues.get(key);
     const tasks = entry?.tasks || [];
     this.debugLog(
-      `[DEBUG] GET_TASKS ${keycard}/${identifier || 'default'}, count: ${tasks.length}`
+      `[DEBUG] GET_TASKS ${keycard}/${identifier }, count: ${tasks.length}`
     );
     return tasks;
   }
