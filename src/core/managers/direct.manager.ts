@@ -1,6 +1,7 @@
 import { engineHub } from '@/core/hubs/engine.hub';
 import { TaskContext } from '@/core/contexts/task.context';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
+export type { DirectOptions } from '@/core/types';
 
 export class DirectManager {
   private abortControllers: Map<string, AbortController> = new Map();
