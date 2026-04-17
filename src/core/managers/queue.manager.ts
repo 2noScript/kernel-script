@@ -465,7 +465,30 @@ export class QueueManager {
     if (delayMax > 0) {
       const delayMs = Math.floor(Math.random() * (delayMax - delayMin + 1) + delayMin) * 1000;
       this.debugLog(`[QueueManager] Delaying task ${task.id} for ${delayMs}ms...`);
-      await sleep(delayMs, controller.signal);
+      try {
+        await sleep(delayMs, controller.signal);
+      } catch (err) {
+        if (err instanceof Error && err.message === 'CANCELLED') {
+          this.debugLog(`[QueueManager] Task ${task.id} cancelled during delay`);
+          entry.tasks[taskIndex] = {
+            ...currentTask,
+            status: 'Waiting',
+            isQueued: false,
+          };
+          currentTask.histories = currentTask.histories || [];
+          currentTask.histories.push({
+            errorMessage: 'CANCELLED',
+            handleAt: Date.now(),
+          });
+          this.updateTasks(keycard, identifier, entry.tasks);
+          this.abortControllers.delete(task.id);
+          entry.queuedIds.delete(task.id);
+          this.notifyStatusChange(keycard, identifier);
+          this.notifyTasksUpdate(keycard, identifier, entry.tasks);
+          return;
+        }
+        throw err;
+      }
     }
 
     this.logQueueState(keycard, identifier, `PROCESS_START ${task.id}`);
