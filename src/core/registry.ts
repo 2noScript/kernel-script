@@ -1,11 +1,44 @@
 import type { BaseEngine } from '@/core/types';
 import type { QueueManager } from '@/core/managers/queue.manager';
 
-export function registerEngines(
-  platformEngines: Record<string, BaseEngine>,
-  queueManager: QueueManager
-) {
-  Object.entries(platformEngines).forEach(([keycard, engine]) => {
-    queueManager.registerEngine(keycard, engine);
+export function registerEngines(engines: BaseEngine[], queueManager: QueueManager) {
+  engines.forEach((engine) => {
+    queueManager.registerEngine(engine);
   });
+}
+
+export type EngineRegistry = {
+  register: (engine: BaseEngine) => void;
+  get: (keycard: string) => BaseEngine | undefined;
+  listAll: () => string[];
+  getEngines: () => BaseEngine[];
+};
+
+export function createEngineRegistry(): EngineRegistry {
+  const engines: Map<string, BaseEngine> = new Map();
+  return {
+    register(engine: BaseEngine) {
+      if (!engine.keycard) {
+        throw new Error("Error: Engine must have a 'keycard' property.");
+      }
+
+      if (engines.has(engine.keycard)) {
+        throw new Error(`Error: Keycard "${engine.keycard}" is already in use by another engine.`);
+      }
+
+      engines.set(engine.keycard, engine);
+    },
+
+    get(keycard: string) {
+      return engines.get(keycard);
+    },
+
+    listAll() {
+      return Array.from(engines.keys());
+    },
+
+    getEngines(): BaseEngine[] {
+      return Array.from(engines.values());
+    },
+  };
 }

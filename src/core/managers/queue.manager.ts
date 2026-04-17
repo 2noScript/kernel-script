@@ -161,8 +161,8 @@ export class QueueManager {
     }
   }
 
-  registerEngine(keycard: string, engine: BaseEngine): void {
-    engineHub.register(keycard, engine);
+  registerEngine(engine: BaseEngine): void {
+    engineHub.register(engine);
   }
 
   async add(keycard: string, identifier: string, task: Task): Promise<void> {
