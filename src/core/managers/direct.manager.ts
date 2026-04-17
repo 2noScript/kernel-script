@@ -3,17 +3,70 @@ import { TaskContext } from '@/core/contexts/task.context';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
 export type { DirectOptions } from '@/core/types';
 
+interface PlatformDirectOptions {
+  debug?: boolean;
+  onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
+}
+
 export class DirectManager {
   private abortControllers: Map<string, AbortController> = new Map();
-  private options: DirectOptions;
+  private platformOptions: Map<string, PlatformDirectOptions[]> = new Map();
+  private defaultOptions: PlatformDirectOptions;
 
   constructor(options: DirectOptions = {}) {
-    this.options = options;
+    this.defaultOptions = {
+      debug: options.debug,
+      onTasksUpdate: options.onTasksUpdate,
+      onTaskComplete: options.onTaskComplete,
+    };
   }
 
   private debugLog(...args: unknown[]): void {
-    if (this.options.debug) {
+    if (this.defaultOptions.debug) {
       console.log(...args);
+    }
+  }
+
+  private getOptions(keycard: string): PlatformDirectOptions {
+    const platformSpecific = this.platformOptions.get(keycard) || [];
+    const global = this.platformOptions.get('*') || [];
+    const allOptions = [...platformSpecific, ...global];
+
+    return {
+      debug: allOptions.find((o) => o.debug !== undefined)?.debug ?? this.defaultOptions.debug,
+      onTasksUpdate:
+        allOptions.find((o) => o.onTasksUpdate)?.onTasksUpdate ?? this.defaultOptions.onTasksUpdate,
+      onTaskComplete:
+        allOptions.find((o) => o.onTaskComplete)?.onTaskComplete ??
+        this.defaultOptions.onTaskComplete,
+    };
+  }
+
+  registerOptions(keycard: string, options: Partial<PlatformDirectOptions>): () => void {
+    if (!this.platformOptions.has(keycard)) {
+      this.platformOptions.set(keycard, []);
+    }
+    this.platformOptions.get(keycard)!.push(options as PlatformDirectOptions);
+
+    return () => this.unregisterOptions(keycard, options as PlatformDirectOptions);
+  }
+
+  unregisterOptions(keycard: string, options: PlatformDirectOptions): void {
+    const list = this.platformOptions.get(keycard);
+    if (list) {
+      const index = list.indexOf(options);
+      if (index !== -1) {
+        list.splice(index, 1);
+      }
+      if (list.length === 0) {
+        this.platformOptions.delete(keycard);
+      }
     }
   }
 
@@ -28,13 +81,15 @@ export class DirectManager {
       return { success: false, error: 'Platform not supported' };
     }
 
+    const options = this.getOptions(keycard);
+
     const controller = new AbortController();
     const abortKey = this.getAbortControllerKey(keycard, identifier, task.id);
     this.abortControllers.set(abortKey, controller);
 
     const ctx = new TaskContext(task, controller.signal);
     task.status = 'Running';
-    this.options.onTasksUpdate?.(keycard, identifier, task);
+    options.onTasksUpdate?.(keycard, identifier, task);
 
     try {
       const result = await engine.execute(ctx);
@@ -48,8 +103,8 @@ export class DirectManager {
       }
 
       task.output = result.output;
-      this.options.onTasksUpdate?.(keycard, identifier, task);
-      this.options.onTaskComplete?.(keycard, identifier, task.id, result);
+      options.onTasksUpdate?.(keycard, identifier, task);
+      options.onTaskComplete?.(keycard, identifier, task.id, result);
       return result;
     } catch (error) {
       const isCancelled =
@@ -62,8 +117,8 @@ export class DirectManager {
         task.errorMessage = error instanceof Error ? error.message : String(error);
       }
 
-      this.options.onTasksUpdate?.(keycard, identifier, task);
-      this.options.onTaskComplete?.(keycard, identifier, task.id, {
+      options.onTasksUpdate?.(keycard, identifier, task);
+      options.onTaskComplete?.(keycard, identifier, task.id, {
         success: false,
         error: String(error),
       });

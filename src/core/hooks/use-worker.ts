@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { BaseEngine, Task, TaskConfig } from '@/core/types';
+import type { BaseEngine, Task, TaskConfig, EngineResult } from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
-import { QUEUE_COMMAND } from '@/core/commands';
+import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
 
 export interface WorkerMethods {
   addTask: (task: Task) => Promise<any>;
@@ -19,6 +19,9 @@ export interface WorkerMethods {
   retryTasks: (taskIds: string[]) => Promise<any>;
   skipTaskIds: (taskIds: string[]) => Promise<any>;
   setTaskConfig: (taskConfig: TaskConfig) => Promise<any>;
+  directStart: (task: Task) => Promise<EngineResult>;
+  directStop: (taskId: string) => Promise<any>;
+  directCheckRunning: (taskId: string) => Promise<any>;
 }
 
 interface Funcs {
@@ -151,6 +154,27 @@ export function useWorker(config: WorkerConfig) {
                 funcs.addHistoryTask(data.task);
               }
               break;
+          }
+        }
+
+        if (message.type === 'DIRECT_EVENT') {
+          const { event, keycard: pid, identifier: pjid, data } = message;
+
+          const isPlatformMatch = pid === keycard || pid === '*';
+          const isIdentifierMatch = (pjid || '') === (identifier || '') || pid === '*';
+
+          if (!isPlatformMatch || !isIdentifierMatch) return;
+
+          switch (event) {
+            case 'TASK_UPDATED': {
+              debugLog(`[HOOK] EVENT: TASK_UPDATED for ${keycard}/${identifier}: ${data.task?.id}`);
+              funcs.updateTask(data.task.id, data.task);
+              break;
+            }
+            case 'TASK_COMPLETED': {
+              debugLog(`[HOOK] EVENT: TASK_COMPLETED for ${keycard}/${identifier}: ${data.taskId}`);
+              break;
+            }
           }
         }
       };
@@ -316,6 +340,50 @@ export function useWorker(config: WorkerConfig) {
       [funcs, sendQueueCommand, debugLog]
     );
 
+    const sendDirectCommand = useCallback(
+      async (command: string, payload?: any) => {
+        return new Promise((resolve) => {
+          safeSendMessage(
+            {
+              type: 'DIRECT_COMMAND',
+              command,
+              keycard,
+              identifier,
+              payload,
+            },
+            resolve
+          );
+        });
+      },
+      [keycard, identifier, safeSendMessage]
+    );
+
+    const directStart = useCallback(
+      async (task: Task) => {
+        debugLog(
+          `[HOOK] DIRECT_START ${task.id} (${task.name || 'unnamed'}) on ${keycard}/${identifier}`
+        );
+        return sendDirectCommand(DIRECT_COMMAND.START, { task });
+      },
+      [sendDirectCommand, debugLog]
+    );
+
+    const directStop = useCallback(
+      async (taskId: string) => {
+        debugLog(`[HOOK] DIRECT_STOP ${taskId} on ${keycard}/${identifier}`);
+        return sendDirectCommand(DIRECT_COMMAND.STOP, { taskId });
+      },
+      [sendDirectCommand, debugLog]
+    );
+
+    const directCheckRunning = useCallback(
+      async (taskId: string) => {
+        debugLog(`[HOOK] DIRECT_CHECK_RUNNING ${taskId} on ${keycard}/${identifier}`);
+        return sendDirectCommand(DIRECT_COMMAND.IS_RUNNING, { taskId });
+      },
+      [sendDirectCommand, debugLog]
+    );
+
     return {
       addTask,
       start,
@@ -332,6 +400,9 @@ export function useWorker(config: WorkerConfig) {
       retryTasks,
       skipTaskIds,
       setTaskConfig,
+      directStart,
+      directStop,
+      directCheckRunning,
     } as WorkerMethods;
   };
 }
