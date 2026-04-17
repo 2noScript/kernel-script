@@ -34,7 +34,8 @@
     "build": "tsc -p tsconfig.build.json && node esbuild.config.js && node scripts/fix-dts-paths.js",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "release": "bun run build && bunx bumpp --push"
+    "release": "bun run build && bunx bumpp --push",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest",
