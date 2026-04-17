@@ -66,6 +66,7 @@ export type SerializedQueueState = {
 
 export type DirectOptions = {
   debug?: boolean;
+  storageKey?: string;
   onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
   onTaskComplete?: (
     keycard: string,

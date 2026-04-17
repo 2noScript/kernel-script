@@ -1,5 +1,9 @@
 import { engineHub } from '@/core/hubs/engine.hub';
 import { TaskContext } from '@/core/contexts/task.context';
+import {
+  PersistenceManager,
+  type SerializedDirectState,
+} from '@/core/managers/persistence.manager';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
 export type { DirectOptions } from '@/core/types';
 
@@ -18,6 +22,8 @@ export class DirectManager {
   private abortControllers: Map<string, AbortController> = new Map();
   private platformOptions: Map<string, PlatformDirectOptions[]> = new Map();
   private defaultOptions: PlatformDirectOptions;
+  private runningTasks: Map<string, Task> = new Map();
+  private persistenceManager: PersistenceManager;
 
   constructor(options: DirectOptions = {}) {
     this.defaultOptions = {
@@ -25,6 +31,7 @@ export class DirectManager {
       onTasksUpdate: options.onTasksUpdate,
       onTaskComplete: options.onTaskComplete,
     };
+    this.persistenceManager = new PersistenceManager(options.storageKey || 'DIRECT_MANAGER_STATE');
   }
 
   private debugLog(...args: unknown[]): void {
@@ -87,6 +94,8 @@ export class DirectManager {
     const abortKey = this.getAbortControllerKey(keycard, identifier, task.id);
     this.abortControllers.set(abortKey, controller);
 
+    this.runningTasks.set(abortKey, task);
+
     const ctx = new TaskContext(task, controller.signal);
     task.status = 'Running';
     options.onTasksUpdate?.(keycard, identifier, task);
@@ -125,6 +134,7 @@ export class DirectManager {
       return { success: false, error: String(error) };
     } finally {
       this.abortControllers.delete(abortKey);
+      this.runningTasks.delete(abortKey);
     }
   }
 
@@ -135,12 +145,67 @@ export class DirectManager {
     if (controller) {
       controller.abort();
       this.abortControllers.delete(abortKey);
+      this.runningTasks.delete(abortKey);
     }
   }
 
   isRunning(keycard: string, identifier: string, taskId: string): boolean {
     const abortKey = this.getAbortControllerKey(keycard, identifier, taskId);
     return this.abortControllers.has(abortKey);
+  }
+
+  getRunningTasks(keycard: string, identifier: string): Task[] {
+    const tasks: Task[] = [];
+    for (const [key, task] of this.runningTasks.entries()) {
+      if (key.startsWith(`${keycard}__${identifier}__`)) {
+        tasks.push(task);
+      }
+    }
+    return tasks;
+  }
+
+  hasRunningTask(keycard: string, identifier: string): boolean {
+    for (const key of this.runningTasks.keys()) {
+      if (key.startsWith(`${keycard}__${identifier}__`)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async persistState(): Promise<void> {
+    const states: Record<string, { isRunning: boolean }> = {};
+    for (const key of this.runningTasks.keys()) {
+      states[key] = { isRunning: true };
+    }
+    await this.persistenceManager.saveDirectStates(states);
+  }
+
+  async hydrate(): Promise<void> {
+    const states = await this.persistenceManager.loadDirectStates();
+    if (!states) return;
+
+    for (const key in states) {
+      const state = states[key];
+      if (!state?.isRunning) continue;
+
+      const [keycard, identifier, taskId] = key.split('__');
+      if (!keycard || !identifier || !taskId) continue;
+
+      const task = this.runningTasks.get(key);
+      if (task) {
+        task.status = 'Running';
+      }
+    }
+  }
+
+  async rehydrateTasks(): Promise<void> {
+    for (const [key, task] of this.runningTasks.entries()) {
+      if (task.status === 'Running') {
+        task.status = 'Waiting';
+      }
+    }
+    await this.persistState();
   }
 }
 

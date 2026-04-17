@@ -40,6 +40,18 @@ export const createDirectCommandHandler = ({
         }
         return { isRunning: directManager.isRunning(keycard, identifier, taskId) };
 
+      case DIRECT_COMMAND.GET_TASKS:
+        debugLog(`[BOOTSTRAP] DIRECT_GET_TASKS from ${keycard}/${identifier}`);
+        return {
+          tasks: directManager.getRunningTasks(keycard, identifier),
+        };
+
+      case DIRECT_COMMAND.GET_STATUS:
+        debugLog(`[BOOTSTRAP] DIRECT_GET_STATUS from ${keycard}/${identifier}`);
+        return {
+          isRunning: directManager.hasRunningTask(keycard, identifier),
+        };
+
       default:
         return null;
     }
