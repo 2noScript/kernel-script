@@ -1,5 +1,4 @@
 import { createIndexedDBStorage } from '@/lib/indexed-db-storage';
-import { getIdentifierFaker } from '@/lib/utils';
 import { createTaskStore, type TaskStoreState } from 'kernel-script';
 
 export type ImageGenerationConfig = {
@@ -102,4 +101,4 @@ export const getTestTaskStore = (identifier: string) => {
   });
 };
 
-export const useTestTaskStore = getTestTaskStore(getIdentifierFaker());
+export const useTestTaskStore = getTestTaskStore('Fake_Identifier');
