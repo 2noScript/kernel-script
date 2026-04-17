@@ -9,3 +9,4 @@ export * from '@/core/store/base-task.store';
 export { useWorker, type WorkerMethods } from '@/core/hooks/use-worker';
 export { setupKernelScript, type SetupOptions } from '@/core/bootstrap';
 export { registerEngines, createEngineRegistry } from '@/core/registry';
+export { TaskContext } from '@/core/contexts/task.context';
