@@ -40,12 +40,35 @@ bun add kernel-script
 ```
 
 ```typescript
-import {
-  setupKernelScript,
-  registerEngines,
-  useWorker,
-  createTaskStore,
-} from 'kernel-script';
+import { setupKernelScript, createEngineRegistry, useWorker, createTaskStore } from 'kernel-script';
+
+// 1. Create and register your engine
+const registry = createEngineRegistry();
+registry.register({
+  keycard: 'my-platform',
+  execute: async (ctx) => {
+    // Your automation logic here
+    return { success: true, output: 'Done' };
+  },
+});
+
+// 2. Initialize in background script
+setupKernelScript(registry, { debug: true });
+
+// 3. Create store and use hook in React
+const taskStore = createTaskStore({ name: 'my-tasks' });
+const TaskQueue = () => {
+  const { start, pause, addTask, publishTasks } = useWorker({
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
+    identifier: 'default',
+    funcs: taskStore,
+  });
+  // ...
+};
+```
+
+```typescript
+import { setupKernelScript, registerEngines, useWorker, createTaskStore } from 'kernel-script';
 
 // 1. Define your engine
 const myEngine = {
@@ -83,9 +106,20 @@ bun dev
 
 | File                                                                           | Description                      |
 | ------------------------------------------------------------------------------ | -------------------------------- |
-| [`example/src/background.ts`](example/src/background.ts)                       | Engine setup                     |
+| [`example/src/background.ts`](example/src/background.ts)                       | Engine setup with registry       |
 | [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Queue hook usage                 |
 | [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)         | Store with IndexedDB persistence |
+
+### New in v2.0
+
+- **DirectManager** - Execute tasks immediately without queue
+- **Engine Registry** - New registry-based engine system
+- **QueueOptions** - Callback hooks for queue events
+- **`publishTasks()`** - Publish local tasks to queue
+- **`cancelTasks()`** / **`skipTaskIds()`** - Batch task operations
+- **`setTaskConfig()`** - Runtime config updates
+- **Task History** - Track completed tasks (max 1000)
+- **Multi-select** - Select multiple tasks for batch operations
 
 ## Features
 
@@ -116,7 +150,7 @@ graph LR
 | Layer | Component           | Description                          |
 | ----- | ------------------- | ------------------------------------ |
 | UI    | TaskStore (Zustand) | Local state management               |
-| UI    | useWorker Hook       | React hook interface                 |
+| UI    | useWorker Hook      | React hook interface                 |
 | BG    | QueueManager        | Task scheduling, concurrency control |
 | BG    | EngineHub           | Engine router/registry               |
 | BG    | PersistenceManager  | IndexedDB persistence                |
@@ -202,14 +236,18 @@ bun add kernel-script
 ### Basic Setup
 
 ```typescript
-import { setupKernelScript, registerEngines } from 'kernel-script';
-import type { BaseEngine, Task, EngineResult } from 'kernel-script';
+import {
+  setupKernelScript,
+  createEngineRegistry,
+  type TaskContext,
+  type EngineResult,
+} from 'kernel-script';
 
 // Define your custom engine
-const myEngine: BaseEngine = {
+const myEngine = {
   keycard: 'my-platform',
 
-  async execute(ctx: Task): Promise<EngineResult> {
+  async execute(ctx: TaskContext): Promise<EngineResult> {
     try {
       const tab = await chrome.tabs.create({ url: ctx.payload.url });
       await this.runAutomation(tab.id, ctx);
@@ -219,35 +257,36 @@ const myEngine: BaseEngine = {
       return { success: false, error: error.message };
     }
   },
-
-  cancel(taskId: string): void {
-    // Cancel logic here
-  },
 };
 
-// Initialize in your background script
-setupKernelScript({ 'my-platform': myEngine });
+// Create registry and register engine
+const registry = createEngineRegistry();
+registry.register(myEngine);
 
-// Optionally register all built-in engines
-registerEngines();
+// Initialize in your background script
+setupKernelScript(registry, { debug: true });
 // See: example/src/background.ts
 ```
 
 ### React Hook
 
 ```typescript
-import { useWorker, createTaskStore } from 'kernel-script';
+import { useWorker, createTaskStore, type Task } from 'kernel-script';
 
 // Create a task store
 const taskStore = createTaskStore({ name: 'my-tasks' });
 
 // Use in your component
 function TaskQueue() {
-  const { start, pause, resume, stop, addTask, deleteTasks, retryTasks } = useWorker({
-    keycard: 'my-platform',
-    getIdentifier: () => 'default',
+  const { start, pause, resume, stop, publishTasks, deleteTasks, retryTasks, cancelTasks, skipTaskIds } = useWorker({
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
+    identifier: 'default',
     funcs: taskStore,
   });
+
+  const handleAddTasks = (tasks: Task[]) => {
+    publishTasks(tasks);  // Add tasks to queue
+  };
 
   return (
     <div>
@@ -280,7 +319,28 @@ const store = createTaskStore({
     })),
   })),
 });
+// Store includes: tasks, taskHistory, selectedIds, taskConfig
 // See: example/src/stores/task.store.ts
+```
+
+### Direct Execution (No Queue)
+
+```typescript
+import { getDirectManager, type Task, type EngineResult } from 'kernel-script';
+
+const directManager = getDirectManager();
+
+const task: Task = {
+  id: 'task-001',
+  no: 1,
+  name: 'Generate cat image',
+  status: 'Waiting',
+  progress: 0,
+  payload: { url: 'https://example.com' },
+};
+
+const result: EngineResult = await directManager.execute('my-platform', task);
+// Use direct execution when you don't need queue management
 ```
 
 ### Advanced
@@ -323,22 +383,36 @@ queueManager.start('my-platform', 'default');
 
 ### Core
 
-| Export                           | Description                                  |
-| -------------------------------- | -------------------------------------------- |
-| `QueueManager`                   | Main queue manager class                     |
-| `getQueueManager()`              | Get queue manager singleton                  |
-| `TaskContext`                    | Context for task execution with abort signal |
-| `setupKernelScript(engines)` | Initialize background engine                 |
-| `engineHub`                      | Engine registry                              |
-| `persistenceManager`             | Persistence layer                            |
-| `registerEngines()`           | Register all built-in engines                |
-| `sleep(ms)`                      | Promise-based sleep function                 |
+| Export                                 | Description                                  |
+| -------------------------------------- | -------------------------------------------- |
+| `QueueManager`                         | Main queue manager class                     |
+| `getQueueManager()`                    | Get queue manager singleton                  |
+| `getDirectManager()`                   | Direct task execution without queue          |
+| `TaskContext`                          | Context for task execution with abort signal |
+| `setupKernelScript(registry, options)` | Initialize background engine with registry   |
+| `createEngineRegistry()`               | Create custom engine registry                |
+| `registerEngines(engines, qm)`         | Register engines to queue manager            |
+| `persistenceManager`                   | Persistence layer                            |
+| `sleep(ms)`                            | Promise-based sleep function                 |
+
+### Queue Options
+
+| Option                        | Description                         |
+| ----------------------------- | ----------------------------------- |
+| `debug?: boolean`             | Enable debug logging                |
+| `storageKey?: string`         | IndexedDB storage key               |
+| `defaultConcurrency?: number` | Default concurrency (default: 1)    |
+| `onTaskStart?: fn`            | Callback when task starts           |
+| `onTaskComplete?: fn`         | Callback when task completes        |
+| `onQueueEmpty?: fn`           | Callback when queue becomes empty   |
+| `onPendingCountChange?: fn`   | Callback when pending count changes |
+| `onTasksUpdate?: fn`          | Callback when tasks are updated     |
 
 ### Hooks
 
-| Hook                | Description                     | Usage                                          |
-| ------------------- | ------------------------------- | ---------------------------------------------- |
-| `useWorker(config)` | React hook for queue operations | `useWorker({ keycard, getIdentifier, funcs })` |
+| Hook                | Description                     | Usage                                      |
+| ------------------- | ------------------------------- | ------------------------------------------ |
+| `useWorker(config)` | React hook for queue operations | `useWorker({ engine, identifier, funcs })` |
 
 ### Store
 
@@ -348,16 +422,21 @@ queueManager.start('my-platform', 'default');
 
 ### Queue Operations
 
-| Operation                                     | Description                   |
-| --------------------------------------------- | ----------------------------- |
+| Operation                                  | Description                   |
+| ------------------------------------------ | ----------------------------- |
 | `add(keycard, identifier, task)`           | Add 1 task to queue           |
 | `addMany(keycard, identifier, tasks)`      | Add multiple tasks            |
 | `start(keycard, identifier)`               | Start processing queue        |
 | `pause(keycard, identifier)`               | Pause (don't cancel tasks)    |
 | `resume(keycard, identifier)`              | Resume processing             |
 | `stop(keycard, identifier)`                | Stop + halt all running tasks |
+| `clear(keycard, identifier)`               | Clear all tasks               |
+| `cancelTask(keycard, identifier, taskId)`  | Cancel + remove task          |
+| `haltTask(keycard, identifier, taskId)`    | Halt task (reset to Waiting)  |
 | `getStatus(keycard, identifier)`           | Get queue status              |
+| `getTasks(keycard, identifier)`            | Get all tasks                 |
 | `retryTasks(keycard, identifier, taskIds)` | Retry failed tasks            |
+| `setConcurrency(keycard, concurrency)`     | Set concurrency               |
 
 ## Types
 
@@ -378,6 +457,7 @@ interface Task {
   isQueued?: boolean;
   createAt?: number;
   updateAt?: number;
+  [key: string]: unknown;
 }
 
 // Queue configuration
@@ -388,11 +468,40 @@ interface TaskConfig {
   stopOnErrorCount: number;
 }
 
+// Queue status
+interface QueueStatus {
+  size: number;
+  pending: number;
+  isRunning: boolean;
+}
+
+// Queue options (callbacks)
+interface QueueOptions {
+  debug?: boolean;
+  storageKey?: string;
+  defaultConcurrency?: number;
+  onTaskStart?: (keycard: string, identifier: string, taskId: string) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
+  onQueueEmpty?: (keycard: string, identifier: string) => void;
+  onPendingCountChange?: (keycard: string, identifier: string, count: number) => void;
+  onTasksUpdate?: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => void;
+}
+
+// Setup options
+interface SetupOptions {
+  debug?: boolean;
+  storageKey?: string;
+}
+
 // Engine interface
 interface BaseEngine {
   keycard: string;
-  execute(ctx: Task): Promise<EngineResult>;
-  cancel(taskId: string): void;
+  execute(ctx: TaskContext): Promise<EngineResult>;
 }
 
 // Engine result
@@ -401,6 +510,25 @@ interface EngineResult {
   output?: unknown;
   error?: string;
 }
+
+// Worker methods (hook return type)
+interface WorkerMethods {
+  addTask: (task: Task) => Promise<any>;
+  start: () => Promise<any>;
+  stop: () => Promise<any>;
+  pause: () => Promise<any>;
+  resume: () => Promise<any>;
+  clear: () => Promise<any>;
+  getStatus: () => Promise<any>;
+  getTasks: () => Promise<any>;
+  cancelTask: (taskId: string) => Promise<any>;
+  cancelTasks: (taskIds: string[]) => Promise<any>;
+  publishTasks: (tasks: Task[]) => Promise<any>;
+  deleteTasks: (taskIds: string[]) => Promise<any>;
+  retryTasks: (taskIds: string[]) => Promise<any>;
+  skipTaskIds: (taskIds: string[]) => Promise<any>;
+  setTaskConfig: (taskConfig: TaskConfig) => Promise<any>;
+}
 ```
 
 ## Troubleshooting
@@ -408,22 +536,22 @@ interface EngineResult {
 ### Common Issues
 
 **Q: Tasks not executing after adding**
-A: Make sure to call `start(keycard, identifier)` after adding tasks.
+A: Make sure to call `start()` after adding tasks, or use `publishTasks()` to add and queue in one step.
 
 **Q: Queue not persisting after extension restart**
-A: Verify `persistenceManager` is initialized. Check IndexedDB permissions.
+A: Verify `setupKernelScript()` is called on bootstrap. Check IndexedDB permissions.
 
 **Q: React hook not updating**
-A: Ensure your store is passed correctly to `useWorker` funcs parameter.
+A: Ensure your store is passed correctly to `useWorker` funcs parameter. Check chrome.runtime.id exists.
 
 **Q: Engine not found**
-A: Register your engine with `setupKernelScript()` before using it.
+A: Register your engine with `createEngineRegistry().register(engine)` before calling `setupKernelScript()`.
 
-**Q: "Cannot read property X of undefined"**
-A: Ensure you're importing from `dist/` after building: `import { ... } from 'kernel-script'`
+**Q: "No engine registered for platform"**
+A: Make sure your engine's keycard matches the keycard you're using in addTask/publishTasks.
 
 **Q: TypeScript errors on import**
-A: Make sure to install peer dependencies: `npm install react react-dom`
+A: Ensure peer dependencies are installed: `npm install react react-dom zustand`
 
 **Q: Where do I start?**
 A: Check the [`example/`](example/) folder for a complete implementation.

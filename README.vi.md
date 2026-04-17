@@ -40,12 +40,35 @@ bun add kernel-script
 ```
 
 ```typescript
-import {
-  setupKernelScript,
-  registerEngines,
-  useWorker,
-  createTaskStore,
-} from 'kernel-script';
+import { setupKernelScript, createEngineRegistry, useWorker, createTaskStore } from 'kernel-script';
+
+// 1. Tạo và đăng ký engine của bạn
+const registry = createEngineRegistry();
+registry.register({
+  keycard: 'my-platform',
+  execute: async (ctx) => {
+    // Logic tự động hóa của bạn ở đây
+    return { success: true, output: 'Done' };
+  },
+});
+
+// 2. Khởi tạo trong background script
+setupKernelScript(registry, { debug: true });
+
+// 3. Tạo store và sử dụng hook trong React
+const taskStore = createTaskStore({ name: 'my-tasks' });
+const TaskQueue = () => {
+  const { start, pause, addTask, publishTasks } = useWorker({
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
+    identifier: 'default',
+    funcs: taskStore,
+  });
+  // ...
+};
+```
+
+```typescript
+import { setupKernelScript, registerEngines, useWorker, createTaskStore } from 'kernel-script';
 
 // 1. Định nghĩa engine của bạn
 const myEngine = {
@@ -83,9 +106,20 @@ bun dev
 
 | File                                                                           | Mô tả                           |
 | ------------------------------------------------------------------------------ | ------------------------------- |
-| [`example/src/background.ts`](example/src/background.ts)                       | Thiết lập engine                |
+| [`example/src/background.ts`](example/src/background.ts)                       | Thiết lập engine với registry   |
 | [`example/src/hooks/use-task-worker.ts`](example/src/hooks/use-task-worker.ts) | Cách sử dụng queue hook         |
 | [`example/src/stores/task.store.ts`](example/src/stores/task.store.ts)         | Store với IndexedDB persistence |
+
+### Mới trong v2.0
+
+- **DirectManager** - Thực thi tác vụ ngay lập tức không qua hàng đợi
+- **Engine Registry** - Hệ thống registry mới cho engine
+- **QueueOptions** - Callback hooks cho các sự kiện hàng đợi
+- **`publishTasks()`** - Đăng tác vụ local lên hàng đợi
+- **`cancelTasks()`** / **`skipTaskIds()`** - Thao tác tác vụ theo batch
+- **`setTaskConfig()`** - Cập nhật cấu hình runtime
+- **Task History** - Theo dõi tác vụ đã hoàn thành (tối đa 1000)
+- **Multi-select** - Chọn nhiều tác vụ cùng lúc
 
 ## Tính năng
 
@@ -116,7 +150,7 @@ graph LR
 | Layer | Component           | Mô tả                                  |
 | ----- | ------------------- | -------------------------------------- |
 | UI    | TaskStore (Zustand) | Quản lý state cục bộ                   |
-| UI    | useWorker Hook       | Interface React hook                   |
+| UI    | useWorker Hook      | Interface React hook                   |
 | BG    | QueueManager        | Lên lịch tác vụ, kiểm soát concurrency |
 | BG    | EngineHub           | Engine router/registry                 |
 | BG    | PersistenceManager  | IndexedDB persistence                  |
@@ -202,14 +236,18 @@ bun add kernel-script
 ### Thiết lập cơ bản
 
 ```typescript
-import { setupKernelScript, registerEngines } from 'kernel-script';
-import type { BaseEngine, Task, EngineResult } from 'kernel-script';
+import {
+  setupKernelScript,
+  createEngineRegistry,
+  type TaskContext,
+  type EngineResult,
+} from 'kernel-script';
 
 // Định nghĩa engine tùy chỉnh của bạn
-const myEngine: BaseEngine = {
+const myEngine = {
   keycard: 'my-platform',
 
-  async execute(ctx: Task): Promise<EngineResult> {
+  async execute(ctx: TaskContext): Promise<EngineResult> {
     try {
       const tab = await chrome.tabs.create({ url: ctx.payload.url });
       await this.runAutomation(tab.id, ctx);
@@ -219,35 +257,36 @@ const myEngine: BaseEngine = {
       return { success: false, error: error.message };
     }
   },
-
-  cancel(taskId: string): void {
-    // Logic hủy ở đây
-  },
 };
 
-// Khởi tạo trong background script của bạn
-setupKernelScript({ 'my-platform': myEngine });
+// Tạo registry và đăng ký engine
+const registry = createEngineRegistry();
+registry.register(myEngine);
 
-// Đăng ký tất cả built-in engines (tùy chọn)
-registerEngines();
+// Khởi tạo trong background script của bạn
+setupKernelScript(registry, { debug: true });
 // See: example/src/background.ts
 ```
 
 ### React Hook
 
 ```typescript
-import { useWorker, createTaskStore } from 'kernel-script';
+import { useWorker, createTaskStore, type Task } from 'kernel-script';
 
 // Tạo task store
 const taskStore = createTaskStore({ name: 'my-tasks' });
 
 // Sử dụng trong component của bạn
 function TaskQueue() {
-  const { start, pause, resume, stop, addTask, deleteTasks, retryTasks } = useWorker({
-    keycard: 'my-platform',
-    getIdentifier: () => 'default',
+  const { start, pause, resume, stop, publishTasks, deleteTasks, retryTasks, cancelTasks, skipTaskIds } = useWorker({
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
+    identifier: 'default',
     funcs: taskStore,
   });
+
+  const handleAddTasks = (tasks: Task[]) => {
+    publishTasks(tasks);  // Thêm tác vụ vào hàng đợi
+  };
 
   return (
     <div>
@@ -280,7 +319,28 @@ const store = createTaskStore({
     })),
   })),
 });
+// Store bao gồm: tasks, taskHistory, selectedIds, taskConfig
 // See: example/src/stores/task.store.ts
+```
+
+### Thực thi trực tiếp (Không qua hàng đợi)
+
+```typescript
+import { getDirectManager, type Task, type EngineResult } from 'kernel-script';
+
+const directManager = getDirectManager();
+
+const task: Task = {
+  id: 'task-001',
+  no: 1,
+  name: 'Generate cat image',
+  status: 'Waiting',
+  progress: 0,
+  payload: { url: 'https://example.com' },
+};
+
+const result: EngineResult = await directManager.execute('my-platform', task);
+// Sử dụng thực thi trực tiếp khi không cần quản lý hàng đợi
 ```
 
 ### Nâng cao
@@ -323,22 +383,36 @@ queueManager.start('my-platform', 'default');
 
 ### Core
 
-| Export                           | Mô tả                                       |
-| -------------------------------- | ------------------------------------------- |
-| `QueueManager`                   | Class quản lý hàng đợi chính                |
-| `getQueueManager()`              | Lấy singleton queue manager                 |
-| `TaskContext`                    | Context để thực thi tác vụ với abort signal |
-| `setupKernelScript(engines)` | Khởi tạo background engine                  |
-| `engineHub`                      | Registry của các engines                    |
-| `persistenceManager`             | Lớp persistence                             |
-| `registerEngines()`           | Đăng ký tất cả built-in engines             |
-| `sleep(ms)`                      | Hàm sleep dạng Promise                      |
+| Export                                 | Mô tả                                        |
+| -------------------------------------- | -------------------------------------------- |
+| `QueueManager`                         | Class quản lý hàng đợi chính                 |
+| `getQueueManager()`                    | Lấy singleton queue manager                  |
+| `getDirectManager()`                   | Thực thi tác vụ trực tiếp không qua hàng đợi |
+| `TaskContext`                          | Context để thực thi tác vụ với abort signal  |
+| `setupKernelScript(registry, options)` | Khởi tạo background engine với registry      |
+| `createEngineRegistry()`               | Tạo registry engine tùy chỉnh                |
+| `registerEngines(engines, qm)`         | Đăng ký engines vào queue manager            |
+| `persistenceManager`                   | Lớp persistence                              |
+| `sleep(ms)`                            | Hàm sleep dạng Promise                       |
+
+### Queue Options
+
+| Option                        | Mô tả                              |
+| ----------------------------- | ---------------------------------- |
+| `debug?: boolean`             | Bật debug logging                  |
+| `storageKey?: string`         | Key IndexedDB storage              |
+| `defaultConcurrency?: number` | Concurrency mặc định (mặc định: 1) |
+| `onTaskStart?: fn`            | Callback khi tác vụ bắt đầu        |
+| `onTaskComplete?: fn`         | Callback khi tác vụ hoàn thành     |
+| `onQueueEmpty?: fn`           | Callback khi hàng đợi trống        |
+| `onPendingCountChange?: fn`   | Callback khi số lượng chờ thay đổi |
+| `onTasksUpdate?: fn`          | Callback khi tác vụ được cập nhật  |
 
 ### Hooks
 
-| Hook                | Mô tả                            | Cách dùng                                      |
-| ------------------- | -------------------------------- | ---------------------------------------------- |
-| `useWorker(config)` | React hook cho thao tác hàng đợi | `useWorker({ keycard, getIdentifier, funcs })` |
+| Hook                | Mô tả                            | Cách dùng                                  |
+| ------------------- | -------------------------------- | ------------------------------------------ |
+| `useWorker(config)` | React hook cho thao tác hàng đợi | `useWorker({ engine, identifier, funcs })` |
 
 ### Store
 
@@ -348,16 +422,21 @@ queueManager.start('my-platform', 'default');
 
 ### Thao tác hàng đợi
 
-| Thao tác                                      | Mô tả                                |
-| --------------------------------------------- | ------------------------------------ |
+| Thao tác                                   | Mô tả                                |
+| ------------------------------------------ | ------------------------------------ |
 | `add(keycard, identifier, task)`           | Thêm 1 tác vụ vào hàng đợi           |
 | `addMany(keycard, identifier, tasks)`      | Thêm nhiều tác vụ                    |
 | `start(keycard, identifier)`               | Bắt đầu xử lý hàng đợi               |
 | `pause(keycard, identifier)`               | Tạm dừng (không hủy tác vụ)          |
 | `resume(keycard, identifier)`              | Tiếp tục xử lý                       |
 | `stop(keycard, identifier)`                | Dừng và halt tất cả tác vụ đang chạy |
+| `clear(keycard, identifier)`               | Xóa tất cả tác vụ                    |
+| `cancelTask(keycard, identifier, taskId)`  | Hủy + xóa tác vụ                     |
+| `haltTask(keycard, identifier, taskId)`    | Dừng tác vụ (reset về Waiting)       |
 | `getStatus(keycard, identifier)`           | Lấy trạng thái hàng đợi              |
+| `getTasks(keycard, identifier)`            | Lấy tất cả tác vụ                    |
 | `retryTasks(keycard, identifier, taskIds)` | Thử lại các tác vụ thất bại          |
+| `setConcurrency(keycard, concurrency)`     | Đặt concurrency                      |
 
 ## Các kiểu dữ liệu
 
@@ -378,6 +457,7 @@ interface Task {
   isQueued?: boolean;
   createAt?: number;
   updateAt?: number;
+  [key: string]: unknown;
 }
 
 // Cấu hình hàng đợi
@@ -388,11 +468,40 @@ interface TaskConfig {
   stopOnErrorCount: number;
 }
 
+// Trạng thái hàng đợi
+interface QueueStatus {
+  size: number;
+  pending: number;
+  isRunning: boolean;
+}
+
+// Queue options (callbacks)
+interface QueueOptions {
+  debug?: boolean;
+  storageKey?: string;
+  defaultConcurrency?: number;
+  onTaskStart?: (keycard: string, identifier: string, taskId: string) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
+  onQueueEmpty?: (keycard: string, identifier: string) => void;
+  onPendingCountChange?: (keycard: string, identifier: string, count: number) => void;
+  onTasksUpdate?: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => void;
+}
+
+// Setup options
+interface SetupOptions {
+  debug?: boolean;
+  storageKey?: string;
+}
+
 // Interface Engine
 interface BaseEngine {
   keycard: string;
-  execute(ctx: Task): Promise<EngineResult>;
-  cancel(taskId: string): void;
+  execute(ctx: TaskContext): Promise<EngineResult>;
 }
 
 // Kết quả Engine
@@ -401,6 +510,25 @@ interface EngineResult {
   output?: unknown;
   error?: string;
 }
+
+// Worker methods (kiểu trả về của hook)
+interface WorkerMethods {
+  addTask: (task: Task) => Promise<any>;
+  start: () => Promise<any>;
+  stop: () => Promise<any>;
+  pause: () => Promise<any>;
+  resume: () => Promise<any>;
+  clear: () => Promise<any>;
+  getStatus: () => Promise<any>;
+  getTasks: () => Promise<any>;
+  cancelTask: (taskId: string) => Promise<any>;
+  cancelTasks: (taskIds: string[]) => Promise<any>;
+  publishTasks: (tasks: Task[]) => Promise<any>;
+  deleteTasks: (taskIds: string[]) => Promise<any>;
+  retryTasks: (taskIds: string[]) => Promise<any>;
+  skipTaskIds: (taskIds: string[]) => Promise<any>;
+  setTaskConfig: (taskConfig: TaskConfig) => Promise<any>;
+}
 ```
 
 ## Khắc phục sự cố
@@ -408,22 +536,22 @@ interface EngineResult {
 ### Các vấn đề thường gặp
 
 **Q: Tác vụ không thực thi sau khi thêm**
-A: Đảm bảo gọi `start(keycard, identifier)` sau khi thêm tác vụ.
+A: Đảm bảo gọi `start()` sau khi thêm tác vụ, hoặc dùng `publishTasks()` để thêm và queue trong một bước.
 
 **Q: Hàng đợi không lưu sau khi khởi động lại extension**
-A: Xác minh `persistenceManager` đã được khởi tạo. Kiểm tra quyền IndexedDB.
+A: Xác minh `setupKernelScript()` được gọi khi bootstrap. Kiểm tra quyền IndexedDB.
 
 **Q: React hook không cập nhật**
-A: Đảm bảo store của bạn được truyền đúng vào tham số funcs của `useWorker`.
+A: Đảm bảo store được truyền đúng vào tham số funcs của `useWorker`. Kiểm tra chrome.runtime.id tồn tại.
 
 **Q: Engine không tìm thấy**
-A: Đăng ký engine của bạn với `setupKernelScript()` trước khi sử dụng.
+A: Đăng ký engine với `createEngineRegistry().register(engine)` trước khi gọi `setupKernelScript()`.
 
-**Q: "Cannot read property X of undefined"**
-A: Đảm bảo import từ `dist/` sau khi build: `import { ... } from 'kernel-script'`
+**Q: "No engine registered for platform"**
+A: Đảm bảo keycard của engine khớp với keycard bạn dùng trong addTask/publishTasks.
 
 **Q: Lỗi TypeScript khi import**
-A: Đảm bảo cài đặt peer dependencies: `npm install react react-dom`
+A: Đảm bảo cài đặt peer dependencies: `npm install react react-dom zustand`
 
 **Q: Không biết bắt đầu từ đâu?**
 A: Xem thư mục [`example/`](example/) để xem implementation hoàn chỉnh.
