@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { Task, TaskConfig } from '@/core/types';
+import type { BaseEngine, Task, TaskConfig } from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND } from '@/core/commands';
 
@@ -35,15 +35,16 @@ interface Funcs {
 }
 
 export interface WorkerConfig {
-  keycard: string;
-  getIdentifier: () => string | undefined;
+  engine: BaseEngine;
+  identifier: string;
   funcs: Funcs;
   debug?: boolean;
 }
 
 export function useWorker(config: WorkerConfig) {
   return function initWorker() {
-    const { keycard, getIdentifier, funcs, debug = false } = config;
+    const { engine, identifier, funcs, debug = false } = config;
+    const keycard = engine.keycard;
 
     const debugLog = (...args: unknown[]) => {
       if (debug) console.log(...args);
@@ -68,7 +69,6 @@ export function useWorker(config: WorkerConfig) {
     }, []);
 
     const lastInitializedRef = useRef<string | undefined>(undefined);
-    const identifier = getIdentifier();
 
     useEffect(() => {
       const currentId = identifier || '';
@@ -163,7 +163,6 @@ export function useWorker(config: WorkerConfig) {
 
     const sendQueueCommand = useCallback(
       async (command: string, payload?: any) => {
-        const identifier = getIdentifier();
         return new Promise((resolve) => {
           safeSendMessage(
             {
@@ -177,13 +176,13 @@ export function useWorker(config: WorkerConfig) {
           );
         });
       },
-      [keycard, getIdentifier, safeSendMessage]
+      [keycard, identifier, safeSendMessage]
     );
 
     const addTask = useCallback(
       async (task: Task) => {
         debugLog(
-          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${getIdentifier()}`
+          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${identifier}`
         );
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
@@ -191,43 +190,43 @@ export function useWorker(config: WorkerConfig) {
     );
 
     const start = useCallback(async () => {
-      debugLog(`[HOOK] START queue ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] START queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.START);
     }, [sendQueueCommand, funcs, debugLog]);
 
     const stop = useCallback(async () => {
-      debugLog(`[HOOK] STOP queue ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] STOP queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.STOP);
     }, [sendQueueCommand, funcs, debugLog]);
 
     const pause = useCallback(async () => {
-      debugLog(`[HOOK] PAUSE queue ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] PAUSE queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.PAUSE);
     }, [sendQueueCommand, debugLog]);
 
     const resume = useCallback(async () => {
-      debugLog(`[HOOK] RESUME queue ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] RESUME queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.RESUME);
     }, [sendQueueCommand, debugLog]);
 
     const clear = useCallback(async () => {
-      debugLog(`[HOOK] CLEAR queue ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] CLEAR queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.CLEAR);
     }, [sendQueueCommand, debugLog]);
 
     const getStatus = useCallback(async () => {
-      debugLog(`[HOOK] GET_STATUS from ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] GET_STATUS from ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_STATUS);
     }, [sendQueueCommand, debugLog]);
 
     const getTasks = useCallback(async () => {
-      debugLog(`[HOOK] GET_TASKS from ${keycard}/${getIdentifier()}`);
+      debugLog(`[HOOK] GET_TASKS from ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.GET_TASKS);
     }, [sendQueueCommand, debugLog]);
 
     const cancelTask = useCallback(
       async (taskId: string) => {
-        debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASK, { taskId });
       },
       [sendQueueCommand, debugLog]
@@ -235,7 +234,7 @@ export function useWorker(config: WorkerConfig) {
 
     const cancelTasks = useCallback(
       async (taskIds: string[]) => {
-        debugLog(`[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
       },
       [sendQueueCommand, debugLog]
@@ -243,7 +242,7 @@ export function useWorker(config: WorkerConfig) {
 
     const setTaskConfig = useCallback(
       (taskConfig: TaskConfig) => {
-        debugLog(`[HOOK] SET_TASK_CONFIG for ${keycard}/${getIdentifier()}:`, taskConfig);
+        debugLog(`[HOOK] SET_TASK_CONFIG for ${keycard}/${identifier}:`, taskConfig);
         return sendQueueCommand(QUEUE_COMMAND.SET_TASK_CONFIG, { taskConfig });
       },
       [sendQueueCommand, debugLog]
@@ -251,7 +250,7 @@ export function useWorker(config: WorkerConfig) {
 
     const publishTasks = useCallback(
       async (tasks: Task[]) => {
-        debugLog(`[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${identifier}`);
         await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
@@ -266,7 +265,7 @@ export function useWorker(config: WorkerConfig) {
     const deleteTasks = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
-        debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${identifier}`);
 
         await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
 
@@ -278,7 +277,7 @@ export function useWorker(config: WorkerConfig) {
     const skipTaskIds = useCallback(
       async (taskIds: string[]) => {
         if (taskIds.length === 0) return;
-        debugLog(`[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${identifier}`);
 
         await sendQueueCommand('CANCEL_TASKS', { taskIds });
 
@@ -295,7 +294,7 @@ export function useWorker(config: WorkerConfig) {
       async (taskIds: string[]) => {
         const tasks = funcs.getTasks().filter((t) => taskIds.includes(t.id));
         if (tasks.length === 0) return;
-        debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${getIdentifier()}`);
+        debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${identifier}`);
 
         tasks.forEach((task) => {
           funcs.updateTask(task.id, {
