@@ -339,8 +339,22 @@ const task: Task = {
   payload: { url: 'https://example.com' },
 };
 
-const result: EngineResult = await directManager.execute('my-platform', task);
+const result: EngineResult = await directManager.start('my-platform', 'project-1', task);
 // Sử dụng thực thi trực tiếp khi không cần quản lý hàng đợi
+```
+
+### Tùy chọn Direct
+
+```typescript
+const directManager = getDirectManager({
+  debug: true,
+  onTasksUpdate: (keycard, identifier, task) => {
+    console.log(`Task ${task.id} updated:`, task.status);
+  },
+  onTaskComplete: (keycard, identifier, taskId, result) => {
+    console.log(`Task ${taskId} completed:`, result.success);
+  },
+});
 ```
 
 ### Nâng cao
@@ -407,6 +421,22 @@ queueManager.start('my-platform', 'default');
 | `onQueueEmpty?: fn`           | Callback khi hàng đợi trống        |
 | `onPendingCountChange?: fn`   | Callback khi số lượng chờ thay đổi |
 | `onTasksUpdate?: fn`          | Callback khi tác vụ được cập nhật  |
+
+### Tùy chọn Direct
+
+| Option                | Mô tả                             |
+| --------------------- | --------------------------------- |
+| `debug?: boolean`     | Bật debug logging                 |
+| `onTasksUpdate?: fn`  | Callback khi tác vụ được cập nhật |
+| `onTaskComplete?: fn` | Callback khi tác vụ hoàn thành    |
+
+### Thao tác Direct
+
+| Thao tác                                 | Mô tả                     |
+| ---------------------------------------- | ------------------------- |
+| `start(keycard, identifier, task)`       | Bắt đầu thực thi tác vụ   |
+| `stop(keycard, identifier, taskId)`      | Dừng tác vụ đang chạy     |
+| `isRunning(keycard, identifier, taskId)` | Kiểm tra tác vụ đang chạy |
 
 ### Hooks
 
@@ -490,6 +520,18 @@ interface QueueOptions {
   onQueueEmpty?: (keycard: string, identifier: string) => void;
   onPendingCountChange?: (keycard: string, identifier: string, count: number) => void;
   onTasksUpdate?: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => void;
+}
+
+// Tùy chọn Direct (callbacks)
+interface DirectOptions {
+  debug?: boolean;
+  onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
 }
 
 // Setup options

@@ -63,3 +63,14 @@ export type BaseEngine = {
 export type SerializedQueueState = {
   isRunning: boolean;
 };
+
+export type DirectOptions = {
+  debug?: boolean;
+  onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
+};

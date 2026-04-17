@@ -339,8 +339,22 @@ const task: Task = {
   payload: { url: 'https://example.com' },
 };
 
-const result: EngineResult = await directManager.execute('my-platform', task);
+const result: EngineResult = await directManager.start('my-platform', 'project-1', task);
 // Use direct execution when you don't need queue management
+```
+
+### Direct Options
+
+```typescript
+const directManager = getDirectManager({
+  debug: true,
+  onTasksUpdate: (keycard, identifier, task) => {
+    console.log(`Task ${task.id} updated:`, task.status);
+  },
+  onTaskComplete: (keycard, identifier, taskId, result) => {
+    console.log(`Task ${taskId} completed:`, result.success);
+  },
+});
 ```
 
 ### Advanced
@@ -407,6 +421,22 @@ queueManager.start('my-platform', 'default');
 | `onQueueEmpty?: fn`           | Callback when queue becomes empty   |
 | `onPendingCountChange?: fn`   | Callback when pending count changes |
 | `onTasksUpdate?: fn`          | Callback when tasks are updated     |
+
+### Direct Options
+
+| Option                | Description                   |
+| --------------------- | ----------------------------- |
+| `debug?: boolean`     | Enable debug logging          |
+| `onTasksUpdate?: fn`  | Callback when task is updated |
+| `onTaskComplete?: fn` | Callback when task completes  |
+
+### Direct Operations
+
+| Operation                                | Description              |
+| ---------------------------------------- | ------------------------ |
+| `start(keycard, identifier, task)`       | Start executing task     |
+| `stop(keycard, identifier, taskId)`      | Stop running task        |
+| `isRunning(keycard, identifier, taskId)` | Check if task is running |
 
 ### Hooks
 
@@ -490,6 +520,18 @@ interface QueueOptions {
   onQueueEmpty?: (keycard: string, identifier: string) => void;
   onPendingCountChange?: (keycard: string, identifier: string, count: number) => void;
   onTasksUpdate?: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => void;
+}
+
+// Direct options (callbacks)
+interface DirectOptions {
+  debug?: boolean;
+  onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
+  onTaskComplete?: (
+    keycard: string,
+    identifier: string,
+    taskId: string,
+    result: EngineResult
+  ) => void;
 }
 
 // Setup options
