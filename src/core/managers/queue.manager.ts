@@ -274,7 +274,11 @@ export class QueueManager {
       // Find all running tasks and halt them immediately
       const runningTasks = entry.tasks.filter((t) => t.status === 'Running');
       for (const t of runningTasks) {
-        await this.haltTask(keycard, identifier, t.id);
+        try {
+          await this.haltTask(keycard, identifier, t.id);
+        } catch (e) {
+          // Ignore abort errors when halting tasks during stop
+        }
       }
 
       await this.persistState();
@@ -514,6 +518,11 @@ export class QueueManager {
             status: 'Waiting',
             isQueued: false,
           };
+          finTask.histories = finTask.histories || [];
+          finTask.histories.push({
+            errorMessage: 'CANCELLED',
+            handleAt: Date.now(),
+          });
         } else {
           entry.tasks[idx] = {
             ...finTask,
@@ -526,8 +535,18 @@ export class QueueManager {
 
           if (result.success) {
             entry.consecutiveErrors = 0;
+            finTask.histories = finTask.histories || [];
+            finTask.histories.push({
+              output: result.output,
+              handleAt: Date.now(),
+            });
           } else {
             entry.consecutiveErrors = (entry.consecutiveErrors || 0) + 1;
+            finTask.histories = finTask.histories || [];
+            finTask.histories.push({
+              errorMessage: result.error,
+              handleAt: Date.now(),
+            });
           }
         }
         this.updateTasks(keycard, identifier, entry.tasks);
@@ -548,13 +567,24 @@ export class QueueManager {
             status: 'Waiting',
             isQueued: false,
           };
+          errorTask.histories = errorTask.histories || [];
+          errorTask.histories.push({
+            errorMessage: 'CANCELLED',
+            handleAt: Date.now(),
+          });
         } else {
+          const errorMsg = error instanceof Error ? error.message : String(error);
           entry.tasks[idx] = {
             ...errorTask,
             status: 'Error',
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage: errorMsg,
             isQueued: false,
           };
+          errorTask.histories = errorTask.histories || [];
+          errorTask.histories.push({
+            errorMessage: errorMsg,
+            handleAt: Date.now(),
+          });
           entry.consecutiveErrors = (entry.consecutiveErrors || 0) + 1;
         }
         this.updateTasks(keycard, identifier, entry.tasks);

@@ -131,12 +131,10 @@ export function TaskTable() {
   const handleAddRow = useCallback(() => {
     addTask({
       id: crypto.randomUUID(),
-      type: 'image',
       no: tasks.length + 1,
       name: `Task ${tasks.length + 1}`,
       status: 'Draft',
       progress: 0,
-      istaskWorkerd: false,
       payload: {
         model: config.model,
         ratio: config.ratio,
@@ -419,8 +417,8 @@ export function TaskTable() {
   });
 
   useEffect(() => {
-    console.log('selectedIds', selectedIds);
-  }, [selectedIds]);
+    console.log('tasks', tasks);
+  }, [tasks]);
 
   return (
     <>

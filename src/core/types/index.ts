@@ -10,7 +10,14 @@ export type Task = {
   isQueued?: boolean;
   createAt?: number;
   updateAt?: number;
+  histories?: TaskHistory[];
   [key: string]: unknown;
+};
+
+export type TaskHistory = {
+  output?: unknown;
+  handleAt?: number;
+  errorMessage?: string;
 };
 
 export type TaskConfig = {
