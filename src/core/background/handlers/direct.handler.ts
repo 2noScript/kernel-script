@@ -3,13 +3,11 @@ import type { DirectManager } from '@/core/managers/direct.manager';
 
 interface DirectCommandHandlerDeps {
   directManager: DirectManager;
-  debug: boolean;
   debugLog: (...args: unknown[]) => void;
 }
 
 export const createDirectHandler = ({
   directManager,
-  debug,
   debugLog,
 }: DirectCommandHandlerDeps) => {
   return async (message: any) => {

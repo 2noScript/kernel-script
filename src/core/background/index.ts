@@ -26,6 +26,7 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
   registerEngines(engineRegistry.getEngines(), queueManager);
 
   queueManager.registerOptions('*', {
+    debugLog,
     onTasksUpdate: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => {
       broadcast({
         type: 'QUEUE_EVENT',
@@ -60,6 +61,7 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
   });
 
   directManager.registerOptions('*', {
+    debugLog,
     onTasksUpdate: (keycard: string, identifier: string, task: Task) => {
       broadcast({
         type: 'DIRECT_EVENT',
@@ -84,10 +86,9 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
     },
   });
 
-  const queueHandler = createQueueHandler({ queueManager, debug, debugLog });
+  const queueHandler = createQueueHandler({ queueManager, debugLog });
   const directHandler = createDirectHandler({
     directManager,
-    debug,
     debugLog,
   });
 

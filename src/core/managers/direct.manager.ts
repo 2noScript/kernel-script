@@ -1,14 +1,12 @@
 import { engineHub } from '@/core/hubs/engine.hub';
 import { TaskContext } from '@/core/contexts/task.context';
-import {
-  PersistenceManager,
-  type SerializedDirectState,
-} from '@/core/managers/persistence.manager';
+import { PersistenceManager } from '@/core/managers/persistence.manager';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
 export type { DirectOptions } from '@/core/types';
 
 interface PlatformDirectOptions {
   debug?: boolean;
+  debugLog?: (...args: unknown[]) => void;
   onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
   onTaskComplete?: (
     keycard: string,
@@ -27,17 +25,18 @@ export class DirectManager {
 
   constructor(options: DirectOptions = {}) {
     this.defaultOptions = {
-      debug: options.debug,
       onTasksUpdate: options.onTasksUpdate,
       onTaskComplete: options.onTaskComplete,
     };
     this.persistenceManager = new PersistenceManager(options.storageKey || 'DIRECT_MANAGER_STATE');
   }
 
-  private debugLog(...args: unknown[]): void {
-    if (this.defaultOptions.debug) {
-      console.log(...args);
+  private getDebugLog(keycard: string): (...args: unknown[]) => void {
+    const options = this.getOptions(keycard);
+    if (options.debugLog) {
+      return options.debugLog;
     }
+    return () => {};
   }
 
   private getOptions(keycard: string): PlatformDirectOptions {
@@ -47,6 +46,7 @@ export class DirectManager {
 
     return {
       debug: allOptions.find((o) => o.debug !== undefined)?.debug ?? this.defaultOptions.debug,
+      debugLog: allOptions.find((o) => o.debugLog)?.debugLog ?? this.defaultOptions.debugLog,
       onTasksUpdate:
         allOptions.find((o) => o.onTasksUpdate)?.onTasksUpdate ?? this.defaultOptions.onTasksUpdate,
       onTaskComplete:
@@ -82,7 +82,7 @@ export class DirectManager {
   }
 
   async start(keycard: string, identifier: string, task: Task): Promise<EngineResult> {
-    this.debugLog(`[DirectManager] START ${keycard}/${identifier} - Task ${task.id}`);
+    this.getDebugLog(keycard)(`[DirectManager] START ${keycard}/${identifier} - Task ${task.id}`);
     const engine = engineHub.get(keycard);
     if (!engine) {
       return { success: false, error: 'Platform not supported' };
@@ -139,7 +139,7 @@ export class DirectManager {
   }
 
   stop(keycard: string, identifier: string, taskId: string): void {
-    this.debugLog(`[DirectManager] STOP ${keycard}/${identifier} - Task ${taskId}`);
+    this.getDebugLog(keycard)(`[DirectManager] STOP ${keycard}/${identifier} - Task ${taskId}`);
     const abortKey = this.getAbortControllerKey(keycard, identifier, taskId);
     const controller = this.abortControllers.get(abortKey);
     if (controller) {

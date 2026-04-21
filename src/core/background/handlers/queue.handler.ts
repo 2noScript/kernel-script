@@ -17,11 +17,10 @@ export type CommandPayload = {
 
 export type CommandHandlerDeps ={
   queueManager: QueueManager;
-  debug: boolean;
   debugLog: (...args: unknown[]) => void;
 }
 
-export const createQueueHandler = ({ queueManager, debug, debugLog }: CommandHandlerDeps) => {
+export const createQueueHandler = ({ queueManager, debugLog }: CommandHandlerDeps) => {
   return async (message: CommandPayload) => {
     const { command, keycard, identifier = '', payload } = message;
 
