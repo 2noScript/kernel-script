@@ -7,7 +7,7 @@ interface DirectCommandHandlerDeps {
   debugLog: (...args: unknown[]) => void;
 }
 
-export const createDirectCommandHandler = ({
+export const createDirectHandler = ({
   directManager,
   debug,
   debugLog,
