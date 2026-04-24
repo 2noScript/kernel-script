@@ -15,10 +15,10 @@ export type CommandPayload = {
   };
 };
 
-export type CommandHandlerDeps ={
+export type CommandHandlerDeps = {
   queueManager: QueueManager;
   debugLog: (...args: unknown[]) => void;
-}
+};
 
 export const createQueueHandler = ({ queueManager, debugLog }: CommandHandlerDeps) => {
   return async (message: CommandPayload) => {
@@ -40,7 +40,7 @@ export const createQueueHandler = ({ queueManager, debugLog }: CommandHandlerDep
       case QUEUE_COMMAND.CANCEL_TASK:
         debugLog(`[BOOTSTRAP] CANCEL_TASK ${payload.taskId} from ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.cancelTask(keycard, identifier, payload.taskId || ''));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.CANCEL_TASKS:
         debugLog(
@@ -53,37 +53,37 @@ export const createQueueHandler = ({ queueManager, debugLog }: CommandHandlerDep
             )
           )
         );
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.ADD:
         debugLog(`[BOOTSTRAP] ADD task ${payload.task?.id} to ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.add(keycard, identifier, payload.task!));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.ADD_MANY:
         debugLog(`[BOOTSTRAP] ADD_MANY ${payload.tasks?.length} tasks to ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.addMany(keycard, identifier, payload.tasks || []));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.START:
         debugLog(`[BOOTSTRAP] START queue ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.start(keycard, identifier));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.STOP:
         debugLog(`[BOOTSTRAP] STOP queue ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.stop(keycard, identifier));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.RESUME:
         debugLog(`[BOOTSTRAP] RESUME queue ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.resume(keycard, identifier));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.CLEAR:
         debugLog(`[BOOTSTRAP] CLEAR queue ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.clear(keycard, identifier));
-        return { async: true };
+        return { success: true };
 
       case QUEUE_COMMAND.GET_STATUS:
         debugLog(`[BOOTSTRAP] GET_STATUS from ${keycard}/${identifier}`);

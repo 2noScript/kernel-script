@@ -150,7 +150,7 @@ export function TaskTable() {
   }, [tasks.length, config.model, config.ratio, createTask]);
 
   const handleDeleteSelected = useCallback(async () => {
-    await taskWorker.deleteTasks(selectedIds);
+    await taskWorker.delete(selectedIds);
     toast.success(`Deleted ${selectedIds.length} task(s)`);
   }, [selectedIds, taskWorker]);
 
@@ -166,7 +166,7 @@ export function TaskTable() {
       updateTasks(updates);
       toast.success(`Unflagged ${selectedIds.length} task(s)`);
     } else {
-      await taskWorker.skipTaskIds(selectedIds);
+      await taskWorker.skips(selectedIds);
       toast.success(`Skipped ${selectedIds.length} task(s)`);
     }
   }, [selectedIds, tasks, updateTasks, taskWorker]);
@@ -194,7 +194,7 @@ export function TaskTable() {
     const draftTasks = tasks.filter(
       (t: Task) => t.status === 'Draft' && selectedIds.includes(t.id)
     );
-    await taskWorker.publishTasks(draftTasks);
+    await taskWorker.publish(draftTasks);
     toggleSelectAll(selectedIds);
 
     toast.success(`Published ${draftTasks.length} task(s) to taskWorker`);

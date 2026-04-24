@@ -1,28 +1,33 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { BaseEngine, Task, TaskInput, TaskConfig, EngineResult } from '@/core/types';
+import type {
+  BaseEngine,
+  Task,
+  TaskInput,
+  TaskConfig,
+  EngineResult,
+  AsyncResult,
+} from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
 
-
 export interface WorkerMethods {
-  addTask: (task: TaskInput) => Promise<any>;
-  start: () => Promise<any>;
-  stop: () => Promise<any>;
-  pause: () => Promise<any>;
-  resume: () => Promise<any>;
-  clear: () => Promise<any>;
-  getStatus: () => Promise<any>;
-  getTasks: () => Promise<any>;
-  cancelTask: (taskId: string) => Promise<any>;
-  cancelTasks: (taskIds: string[]) => Promise<any>;
-  publishTasks: (tasks: Task[]) => Promise<any>;
-  deleteTasks: (taskIds: string[]) => Promise<any>;
-  retryTasks: (taskIds: string[]) => Promise<any>;
-  skipTaskIds: (taskIds: string[]) => Promise<any>;
-  setTaskConfig: (taskConfig: TaskConfig) => Promise<any>;
+  add: (task: Task) => Promise<AsyncResult>;
+  start: () => Promise<AsyncResult>;
+  stop: () => Promise<AsyncResult>;
+  resume: () => Promise<AsyncResult>;
+  clear: () => Promise<AsyncResult>;
+  getStatus: () => Promise<QueueStatus>;
+  getTasks: () => Promise<{ tasks: Task[] }>;
+  cancel: (taskId: string) => Promise<AsyncResult>;
+  cancels: (taskIds: string[]) => Promise<AsyncResult>;
+  publish: (tasks: Task[]) => Promise<AsyncResult>;
+  delete: (taskIds: string[]) => Promise<AsyncResult>;
+  retries: (taskIds: string[]) => Promise<AsyncResult>;
+  skips: (taskIds: string[]) => Promise<AsyncResult>;
+  setTaskConfig: (taskConfig: TaskConfig) => Promise<AsyncResult>;
   directStart: (task: Task) => Promise<EngineResult>;
-  directStop: (taskId: string) => Promise<any>;
-  directCheckRunning: (taskId: string) => Promise<any>;
+  directStop: (taskId: string) => Promise<AsyncResult>;
+  directCheckRunning: (taskId: string) => Promise<{ isRunning: boolean }>;
 }
 
 interface Funcs {
@@ -183,7 +188,7 @@ export function useWorker(config: WorkerConfig) {
       return () => {
         chrome.runtime.onMessage.removeListener(handleMessage);
       };
-    }, [keycard, identifier, funcs, safeSendMessage]);
+    }, [keycard, identifier, funcs, safeSendMessage, lastInitializedRef]);
 
     const sendQueueCommand = useCallback(
       async (command: string, payload?: any) => {
@@ -203,7 +208,7 @@ export function useWorker(config: WorkerConfig) {
       [keycard, identifier, safeSendMessage]
     );
 
-    const addTask = useCallback(
+    const add = useCallback(
       async (task: TaskInput) => {
         debugLog(`[HOOK] ADD_TASK ${task.name || 'unnamed'} to ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
@@ -220,7 +225,6 @@ export function useWorker(config: WorkerConfig) {
       debugLog(`[HOOK] STOP queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.STOP);
     }, [sendQueueCommand, funcs, debugLog]);
-
 
     const resume = useCallback(async () => {
       debugLog(`[HOOK] RESUME queue ${keycard}/${identifier}`);
@@ -242,7 +246,7 @@ export function useWorker(config: WorkerConfig) {
       return sendQueueCommand(QUEUE_COMMAND.GET_TASKS);
     }, [sendQueueCommand, debugLog]);
 
-    const cancelTask = useCallback(
+    const cancel = useCallback(
       async (taskId: string) => {
         debugLog(`[HOOK] CANCEL_TASK ${taskId} from ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASK, { taskId });
@@ -250,7 +254,7 @@ export function useWorker(config: WorkerConfig) {
       [sendQueueCommand, debugLog]
     );
 
-    const cancelTasks = useCallback(
+    const cancels = useCallback(
       async (taskIds: string[]) => {
         debugLog(`[HOOK] CANCEL_TASKS ${taskIds.length} tasks from ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
@@ -266,10 +270,10 @@ export function useWorker(config: WorkerConfig) {
       [sendQueueCommand, debugLog]
     );
 
-    const publishTasks = useCallback(
+    const publish = useCallback(
       async (tasks: Task[]) => {
         debugLog(`[HOOK] PUBLISH_TASKS ${tasks.length} tasks to ${keycard}/${identifier}`);
-        await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
+        return sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
             status: 'Waiting',
@@ -280,38 +284,39 @@ export function useWorker(config: WorkerConfig) {
       [funcs, sendQueueCommand, debugLog]
     );
 
-    const deleteTasks = useCallback(
+    const _delete = useCallback(
       async (taskIds: string[]) => {
-        if (taskIds.length === 0) return;
+        if (taskIds.length === 0) return { success: true };
         debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${identifier}`);
 
-        await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
-
+        const result = await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
         funcs.deleteTasks(taskIds);
+        return result;
       },
       [funcs, sendQueueCommand, debugLog]
     );
 
-    const skipTaskIds = useCallback(
+    const skips = useCallback(
       async (taskIds: string[]) => {
-        if (taskIds.length === 0) return;
+        if (taskIds.length === 0) return { success: true };
         debugLog(`[HOOK] SKIP_TASKS ${taskIds.length} tasks in ${keycard}/${identifier}`);
 
-        await sendQueueCommand('CANCEL_TASKS', { taskIds });
+        const result = await sendQueueCommand('CANCEL_TASKS', { taskIds });
 
         const updates: Record<string, Partial<Task>> = {};
         taskIds.forEach((id) => {
           updates[id] = { status: 'Skipped', isQueued: false };
         });
         funcs.updateTasks(updates);
+        return result;
       },
       [funcs, sendQueueCommand, debugLog]
     );
 
-    const retryTasks = useCallback(
+    const retries = useCallback(
       async (taskIds: string[]) => {
         const tasks = funcs.getTasks().filter((t) => taskIds.includes(t.id));
-        if (tasks.length === 0) return;
+        if (tasks.length === 0) return { success: true };
         debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${identifier}`);
 
         tasks.forEach((task) => {
@@ -322,7 +327,7 @@ export function useWorker(config: WorkerConfig) {
           });
         });
 
-        await sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
+        return sendQueueCommand(QUEUE_COMMAND.ADD_MANY, {
           tasks: tasks.map((t) => ({
             ...t,
             status: 'Waiting',
@@ -379,20 +384,19 @@ export function useWorker(config: WorkerConfig) {
     );
 
     return {
-      addTask,
+      add,
       start,
       stop,
-      // pause,
       resume,
       clear,
       getStatus,
       getTasks,
-      cancelTask,
-      cancelTasks,
-      publishTasks,
-      deleteTasks,
-      retryTasks,
-      skipTaskIds,
+      cancel,
+      cancels,
+      publish,
+      delete: _delete,
+      retries,
+      skips,
       setTaskConfig,
       directStart,
       directStop,

@@ -15,8 +15,8 @@ export type Task = {
 };
 
 export type TaskInput = {
-  name: Task["name"];
-  payload: Task["payload"];
+  name: Task['name'];
+  payload: Task['payload'];
   [key: string]: any;
 };
 
@@ -80,4 +80,8 @@ export type DirectOptions = {
     taskId: string,
     result: EngineResult
   ) => void;
+};
+
+export type AsyncResult = {
+  success: boolean;
 };
