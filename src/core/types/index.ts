@@ -31,6 +31,7 @@ export type TaskConfig = {
   delayMin: number;
   delayMax: number;
   stopOnErrorCount: number;
+  [key:string]:any 
 };
 
 export type QueueStatus = {

@@ -78,7 +78,6 @@ export function TaskTable() {
     selectedIds,
     toggleSelect,
     toggleSelectAll,
-    config,
     taskConfig,
     updateTaskConfig,
     createTask,
@@ -91,7 +90,6 @@ export function TaskTable() {
       selectedIds: state.selectedIds,
       toggleSelect: state.toggleSelect,
       toggleSelectAll: state.toggleSelectAll,
-      config: state.config,
       taskConfig: state.taskConfig,
       updateTaskConfig: state.updateTaskConfig,
       createTask: state.createTask,
@@ -132,8 +130,8 @@ export function TaskTable() {
     createTask({
       name: `Task ${tasks.length + 1}`,
       payload: {
-        model: config.model,
-        ratio: config.ratio,
+        model: "config.model",
+        ratio:" config.ratio",
         references: [],
         prompt: '',
       },
@@ -147,7 +145,7 @@ export function TaskTable() {
         });
       }
     }, 100);
-  }, [tasks.length, config.model, config.ratio, createTask]);
+  }, [tasks.length, createTask]);
 
   const handleDeleteSelected = useCallback(async () => {
     await taskWorker.delete(selectedIds);
@@ -388,7 +386,7 @@ export function TaskTable() {
         size: 140,
       },
     ],
-    [toggleSelect, toggleSelectAll, updateTask, config.referenceCount, taskWorker, isRunning]
+    [toggleSelect, toggleSelectAll, updateTask, taskWorker, isRunning]
   );
 
   const table = useReactTable({
