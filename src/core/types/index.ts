@@ -5,13 +5,19 @@ export type Task = {
   status: 'Draft' | 'Waiting' | 'Running' | 'Completed' | 'Error' | 'Previous' | 'Skipped';
   progress: number;
   payload: Record<string, any>;
-  output?: unknown;
+  output?: any;
   errorMessage?: string;
   isQueued?: boolean;
   createAt?: number;
   updateAt?: number;
   histories?: TaskHistory[];
-  [key: string]: unknown;
+  [key: string]: any;
+};
+
+export type TaskInput = {
+  name: Task["name"];
+  payload: Task["payload"];
+  [key: string]: any;
 };
 
 export type TaskHistory = {

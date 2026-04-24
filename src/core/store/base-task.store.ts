@@ -1,6 +1,6 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { Task, TaskConfig } from '@/core/types';
+import type { Task, TaskInput, TaskConfig } from '@/core/types';
 
 export interface TaskStoreState {
   tasks: Task[];
@@ -13,8 +13,8 @@ export interface TaskStoreState {
   setTasks: (tasks: Task[]) => void;
   setPendingCount: (count: number) => void;
   setIsRunning: (running: boolean) => void;
-  addTask: (task: Task) => void;
-  addTasks: (tasks: Task[]) => void;
+  createTask: (task: TaskInput) => void;
+  createTasks: (tasks: TaskInput[]) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   updateTasks: (updates: Record<string, Partial<Task>>) => void;
   deleteTasks: (taskIds: string[]) => void;
@@ -66,28 +66,39 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
           },
           setPendingCount: (count: number) => set({ pendingCount: count }),
           setIsRunning: (running: boolean) => set({ isRunning: running }),
-          addTask: (task: Task) =>
+          createTask: (task: TaskInput) =>
             set((state: any) => {
-              if (state.tasks.some((t: Task) => t.id === task.id)) return state;
               const now = Date.now();
-              const newTask = {
+              const maxNo = state.tasks.reduce((max: number, t: Task) => Math.max(max, t.no), 0);
+              const newTask: Task = {
+                id: crypto.randomUUID(),
+                no: maxNo + 1,
+                status: 'Draft',
+                progress: 0,
+                createAt: now,
+                updateAt: now,
                 ...task,
-                createAt: task.createAt || now,
-                updateAt: task.updateAt || now,
               };
+              if (state.tasks.some((t: Task) => t.id === newTask.id)) return state;
               return { tasks: [...state.tasks, newTask] };
             }),
-          addTasks: (newTasks: Task[]) =>
+          createTasks: (newTasks: TaskInput[]) =>
             set((state: any) => {
-              const existingIds = new Set(state.tasks.map((t: Task) => t.id));
               const now = Date.now();
-              const filteredNewTasks = newTasks
-                .filter((t) => !existingIds.has(t.id))
-                .map((t) => ({
-                  ...t,
-                  createAt: t.createAt || now,
-                  updateAt: t.updateAt || now,
-                }));
+              const maxNo = state.tasks.reduce((max: number, t: Task) => Math.max(max, t.no), 0);
+              const createdTasks = newTasks.map((task: TaskInput, index): Task => {
+                return {
+                  id: crypto.randomUUID(),
+                  no: maxNo + 1 + index,
+                  status: 'Draft',
+                  progress: 0,
+                  createAt: now,
+                  updateAt: now,
+                  ...task,
+                };
+              });
+              const existingIds = new Set(state.tasks.map((t: Task) => t.id));
+              const filteredNewTasks = createdTasks.filter((t) => !existingIds.has(t.id));
               if (filteredNewTasks.length === 0) return state;
               return { tasks: [...state.tasks, ...filteredNewTasks] };
             }),
@@ -185,12 +196,12 @@ export const createTaskStore = <T extends object>(options: CreateTaskStoreOption
     },
     setPendingCount: (count: number) => set({ pendingCount: count }),
     setIsRunning: (running: boolean) => set({ isRunning: running }),
-    addTask: (task: Task) =>
+    createTask: (task: Task) =>
       set((state: any) => {
         if (state.tasks.some((t: Task) => t.id === task.id)) return state;
         return { tasks: [...state.tasks, task] };
       }),
-    addTasks: (newTasks: Task[]) =>
+    createTasks: (newTasks: Task[]) =>
       set((state: any) => {
         const existingIds = new Set(state.tasks.map((t: Task) => t.id));
         const filteredNewTasks = newTasks.filter((t) => !existingIds.has(t.id));

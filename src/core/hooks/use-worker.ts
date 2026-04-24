@@ -1,10 +1,10 @@
 import { useEffect, useCallback, useRef } from 'react';
-import type { BaseEngine, Task, TaskConfig, EngineResult } from '@/core/types';
+import type { BaseEngine, Task, TaskInput, TaskConfig, EngineResult } from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
 
 export interface WorkerMethods {
-  addTask: (task: Task) => Promise<any>;
+  addTask: (task: TaskInput) => Promise<any>;
   start: () => Promise<any>;
   stop: () => Promise<any>;
   pause: () => Promise<any>;
@@ -204,10 +204,8 @@ export function useWorker(config: WorkerConfig) {
     );
 
     const addTask = useCallback(
-      async (task: Task) => {
-        debugLog(
-          `[HOOK] ADD_TASK ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${identifier}`
-        );
+      async (task: TaskInput) => {
+        debugLog(`[HOOK] ADD_TASK ${task.name || 'unnamed'} to ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
       [sendQueueCommand, funcs, debugLog]

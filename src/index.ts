@@ -4,7 +4,7 @@ export {
   type QueueStatus,
 } from '@/core/managers/queue.manager';
 export { getDirectManager, type DirectOptions } from '@/core/managers/direct.manager';
-export type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/types';
+export type { Task, TaskInput, TaskConfig, EngineResult, BaseEngine } from '@/core/types';
 export * from '@/core/store/base-task.store';
 export { useWorker, type WorkerMethods } from '@/core/hooks/use-worker';
 export { setupKernelScript, type SetupOptions } from '@/core/background';
