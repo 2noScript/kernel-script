@@ -9,14 +9,13 @@ import { createDirectHandler } from '@/core/background/handlers/direct.handler';
 
 export type SetupOptions = {
   debug?: boolean;
-  storageKey?: string;
 };
 
 export const setupKernelScript = (engineRegistry: EngineRegistry, options: SetupOptions = {}) => {
-  const { debug = false, storageKey } = options;
+  const { debug = false } = options;
   const broadcast = createBroadcast();
-  const queueManager = getQueueManager({ storageKey });
-  const directManager = getDirectManager({ debug });
+  const queueManager = getQueueManager();
+  const directManager = getDirectManager();
 
   const debugLog = (...args: unknown[]) => {
     if (debug) console.log(...args);
@@ -29,28 +28,25 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
     debugLog,
     onTasksUpdate: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => {
       broadcast({
-        type: 'QUEUE_EVENT',
+        type: 'WORKER_EVENT',
         event: 'TASKS_UPDATED',
         keycard,
         identifier,
         data: { tasks, status },
       });
     },
-    onTaskComplete: (keycard: string, identifier: string, _: string, result: any) => {
-      const isCancelled = result.error === 'CANCELLED' || result.error === 'AbortError';
-      if (!isCancelled) {
-        broadcast({
-          type: 'QUEUE_EVENT',
-          event: 'HISTORY_ADDED',
-          keycard,
-          identifier,
-          data: { task: [] },
-        });
-      }
+    onTaskComplete: (keycard: string, identifier: string, taskId: string, result: EngineResult) => {
+      broadcast({
+        type: 'WORKER_EVENT',
+        event: 'TASK_COMPLETE',
+        keycard,
+        identifier,
+        data: { taskId, result },
+      });
     },
     onPendingCountChange: (keycard: string, identifier: string, count: number) => {
       broadcast({
-        type: 'QUEUE_EVENT',
+        type: 'WORKER_EVENT',
         event: 'PENDING_COUNT_CHANGED',
         keycard,
         identifier,

@@ -5,12 +5,12 @@ export type Task = {
   status: 'Draft' | 'Waiting' | 'Running' | 'Completed' | 'Error' | 'Previous' | 'Skipped';
   progress: number;
   payload: Record<string, any>;
-  output?: any;
+  result?: EngineResult;
   errorMessage?: string;
-  isQueued?: boolean;
-  createAt?: number;
-  updateAt?: number;
-  histories?: TaskHistory[];
+  isQueued: boolean;
+  createAt: number;
+  updateAt: number;
+  histories: TaskHistory[];
   [key: string]: any;
 };
 
@@ -21,9 +21,8 @@ export type TaskInput = {
 };
 
 export type TaskHistory = {
-  output?: unknown;
-  handleAt?: number;
-  errorMessage?: string;
+  result: EngineResult;
+  updateAt: number;
 };
 
 export type TaskConfig = {
@@ -31,7 +30,7 @@ export type TaskConfig = {
   delayMin: number;
   delayMax: number;
   stopOnErrorCount: number;
-  [key:string]:any 
+  [key: string]: any;
 };
 
 export type QueueStatus = {

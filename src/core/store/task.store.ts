@@ -1,11 +1,10 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { Task, TaskInput, TaskConfig } from '@/core/types';
+import type { Task, TaskInput, TaskConfig, EngineResult } from '@/core/types';
 import { createIndexedDBStorage } from '@/core/storage/indexed-db.storage';
 
 export interface TaskStoreState {
   tasks: Task[];
-  taskHistory: Task[];
   pendingCount: number;
   isRunning: boolean;
   selectedIds: string[];
@@ -20,8 +19,7 @@ export interface TaskStoreState {
   updateTasks: (updates: Record<string, Partial<Task>>) => void;
   deleteTasks: (taskIds: string[]) => void;
   clearTasks: () => void;
-  addHistoryTask: (task: Task) => void;
-  clearHistory: () => void;
+  addHistoryTask: (taskId: string, result: EngineResult) => void;
   toggleSelect: (id: string) => void;
   toggleSelectAll: (ids?: string[]) => void;
   setSelectedIds: (ids: string[]) => void;
@@ -38,7 +36,7 @@ export interface CreateTaskStoreOptions {
 
 export const createTaskStore = (options: CreateTaskStoreOptions) => {
   const { keycard, identifier } = options;
-  
+
   return create<TaskStoreState>()(
     persist(
       (set, get) => ({
@@ -71,6 +69,8 @@ export const createTaskStore = (options: CreateTaskStoreOptions) => {
               progress: 0,
               createAt: now,
               updateAt: now,
+              histories: [],
+              isQueued: false,
               ...task,
             };
             if (state.tasks.some((t: Task) => t.id === newTask.id)) return state;
@@ -88,6 +88,8 @@ export const createTaskStore = (options: CreateTaskStoreOptions) => {
                 progress: 0,
                 createAt: now,
                 updateAt: now,
+                histories: [],
+                isQueued: false,
                 ...task,
               };
             });
@@ -117,16 +119,19 @@ export const createTaskStore = (options: CreateTaskStoreOptions) => {
             selectedIds: state.selectedIds.filter((id: string) => !taskIds.includes(id)),
           })),
         clearTasks: () => set({ tasks: [], selectedIds: [] }),
-        addHistoryTask: (task: Task) =>
-          set((state: TaskStoreState) => {
-            const newHistory = [task, ...(state.taskHistory || [])];
-            // Cap at 1000 tasks
-            if (newHistory.length > 1000) {
-              newHistory.length = 1000;
-            }
-            return { taskHistory: newHistory };
-          }),
-        clearHistory: () => set({ taskHistory: [] }),
+        addHistoryTask: (taskId: string, result: EngineResult) => {
+          const tasks = get().tasks.map((t) =>
+            t.id !== taskId
+              ? t
+              : {
+                  ...t,
+                  result,
+                  updateAt: Date.now(),
+                  histories: [...t.histories, { result, updateAt: Date.now() }],
+                }
+          );
+          set({ tasks });
+        },
         toggleSelect: (id: string) =>
           set((state: TaskStoreState) => ({
             selectedIds: state.selectedIds.includes(id)
@@ -164,7 +169,6 @@ export const createTaskStore = (options: CreateTaskStoreOptions) => {
         partialize: (state: TaskStoreState) => {
           return {
             tasks: state.tasks,
-            taskHistory: state.taskHistory,
             selectedIds: state.selectedIds,
             taskConfig: state.taskConfig,
           };
@@ -175,17 +179,5 @@ export const createTaskStore = (options: CreateTaskStoreOptions) => {
 };
 
 export const pluginTask = (store: UseBoundStore<StoreApi<TaskStoreState>>) => {
-  const state = store.getState();
-  return {
-    getTasks: state.getTasks,
-    setTasks: state.setTasks,
-    setPendingCount: state.setPendingCount,
-    setIsRunning: state.setIsRunning,
-    updateTask: state.updateTask,
-    deleteTasks: state.deleteTasks,
-    getIsRunning: state.getIsRunning,
-    updateTasks: state.updateTasks,
-    addHistoryTask: state.addHistoryTask,
-    getTaskConfig: state.getTaskConfig,
-  };
+  return store.getState();
 };

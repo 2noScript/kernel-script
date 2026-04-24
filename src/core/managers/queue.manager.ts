@@ -431,11 +431,6 @@ export class QueueManager {
             status: 'Waiting',
             isQueued: false,
           };
-          currentTask.histories = currentTask.histories || [];
-          currentTask.histories.push({
-            errorMessage: 'CANCELLED',
-            handleAt: Date.now(),
-          });
           this.updateTasks(keycard, identifier, entry.tasks);
           this.abortControllers.delete(task.id);
           entry.queuedIds.delete(task.id);
@@ -496,11 +491,6 @@ export class QueueManager {
             status: 'Waiting',
             isQueued: false,
           };
-          finTask.histories = finTask.histories || [];
-          finTask.histories.push({
-            errorMessage: 'CANCELLED',
-            handleAt: Date.now(),
-          });
         } else {
           entry.tasks[idx] = {
             ...finTask,
@@ -510,22 +500,6 @@ export class QueueManager {
             progress: result.success ? 100 : 0,
             isQueued: false,
           };
-
-          if (result.success) {
-            entry.consecutiveErrors = 0;
-            finTask.histories = finTask.histories || [];
-            finTask.histories.push({
-              output: result.output,
-              handleAt: Date.now(),
-            });
-          } else {
-            entry.consecutiveErrors = (entry.consecutiveErrors || 0) + 1;
-            finTask.histories = finTask.histories || [];
-            finTask.histories.push({
-              errorMessage: result.error,
-              handleAt: Date.now(),
-            });
-          }
         }
         this.updateTasks(keycard, identifier, entry.tasks);
       }
@@ -545,11 +519,6 @@ export class QueueManager {
             status: 'Waiting',
             isQueued: false,
           };
-          errorTask.histories = errorTask.histories || [];
-          errorTask.histories.push({
-            errorMessage: 'CANCELLED',
-            handleAt: Date.now(),
-          });
         } else {
           const errorMsg = error instanceof Error ? error.message : String(error);
           entry.tasks[idx] = {
@@ -558,11 +527,7 @@ export class QueueManager {
             errorMessage: errorMsg,
             isQueued: false,
           };
-          errorTask.histories = errorTask.histories || [];
-          errorTask.histories.push({
-            errorMessage: errorMsg,
-            handleAt: Date.now(),
-          });
+
           entry.consecutiveErrors = (entry.consecutiveErrors || 0) + 1;
         }
         this.updateTasks(keycard, identifier, entry.tasks);

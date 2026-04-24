@@ -9,6 +9,7 @@ import type {
 } from '@/core/types';
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
+import type { TaskStoreState } from '@/core/store/task.store';
 
 export interface WorkerMethods {
   add: (task: Task) => Promise<AsyncResult>;
@@ -30,29 +31,16 @@ export interface WorkerMethods {
   directCheckRunning: (taskId: string) => Promise<{ isRunning: boolean }>;
 }
 
-interface Funcs {
-  getTasks: () => Task[];
-  setTasks: (tasks: Task[]) => void;
-  setPendingCount: (count: number) => void;
-  setIsRunning: (running: boolean) => void;
-  getIsRunning: () => boolean;
-  updateTask: (taskId: string, updates: Partial<Task>) => void;
-  deleteTasks: (taskIds: string[]) => void;
-  updateTasks: (updates: Record<string, Partial<Task>>) => void;
-  addHistoryTask?: (task: Task) => void;
-  getTaskConfig: () => TaskConfig;
-}
-
 export interface WorkerConfig {
   engine: BaseEngine;
   identifier: string;
-  funcs: Funcs;
+  plugin: TaskStoreState;
   debug?: boolean;
 }
 
 export function useWorker(config: WorkerConfig) {
   return function initWorker() {
-    const { engine, identifier, funcs, debug = false } = config;
+    const { engine, identifier, plugin, debug = false } = config;
     const keycard = engine.keycard;
 
     const debugLog = (...args: unknown[]) => {
@@ -98,9 +86,9 @@ export function useWorker(config: WorkerConfig) {
                 `[HOOK] SYNC: Response for ${keycard}/${identifier}: ${response.tasks?.length || 0} tasks`
               );
               if (response.tasks && response.tasks.length > 0) {
-                funcs.setTasks(response.tasks);
+                plugin.setTasks(response.tasks);
               } else {
-                const localTasks = funcs.getTasks();
+                const localTasks = plugin.getTasks();
                 if (localTasks.length > 0) {
                   debugLog(
                     `[HOOK] SYNC: No tasks in background, syncing ${localTasks.length} local tasks`
@@ -116,8 +104,8 @@ export function useWorker(config: WorkerConfig) {
               }
 
               if (response.status) {
-                funcs.setPendingCount(response.status.size + response.status.pending);
-                funcs.setIsRunning(response.status.isRunning);
+                plugin.setPendingCount(response.status.size + response.status.pending);
+                plugin.setIsRunning(response.status.isRunning);
               }
             }
           }
@@ -125,7 +113,7 @@ export function useWorker(config: WorkerConfig) {
       }
 
       const handleMessage = (message: any) => {
-        if (message.type === 'QUEUE_EVENT') {
+        if (message.type === 'WORKER_EVENT') {
           const { event, keycard: pid, identifier: pjid, data } = message;
 
           const isPlatformMatch = pid === keycard || pid === '*';
@@ -142,21 +130,21 @@ export function useWorker(config: WorkerConfig) {
               data.tasks.forEach((t: Task) => {
                 updates[t.id] = t;
               });
-              funcs.updateTasks(updates);
-              funcs.setPendingCount(data.status.size + data.status.pending);
-              funcs.setIsRunning(data.status.isRunning);
+              plugin.updateTasks(updates);
+              plugin.setPendingCount(data.status.size + data.status.pending);
+              plugin.setIsRunning(data.status.isRunning);
               break;
             }
             case 'PENDING_COUNT_CHANGED':
               debugLog(
                 `[HOOK] EVENT: PENDING_COUNT_CHANGED for ${keycard}/${identifier}: ${data.count}`
               );
-              funcs.setPendingCount(data.count);
+              plugin.setPendingCount(data.count);
               break;
-            case 'HISTORY_ADDED':
+            case 'TASK_COMPLETE':
               debugLog(`[HOOK] EVENT: HISTORY_ADDED for ${keycard}/${identifier}`);
-              if (funcs.addHistoryTask) {
-                funcs.addHistoryTask(data.task);
+              if (plugin.addHistoryTask) {
+                plugin.addHistoryTask(data.taskId, data.result);
               }
               break;
           }
@@ -173,7 +161,7 @@ export function useWorker(config: WorkerConfig) {
           switch (event) {
             case 'TASK_UPDATED': {
               debugLog(`[HOOK] EVENT: TASK_UPDATED for ${keycard}/${identifier}: ${data.task?.id}`);
-              funcs.updateTask(data.task.id, data.task);
+              plugin.updateTask(data.task.id, data.task);
               break;
             }
             case 'TASK_COMPLETED': {
@@ -188,7 +176,7 @@ export function useWorker(config: WorkerConfig) {
       return () => {
         chrome.runtime.onMessage.removeListener(handleMessage);
       };
-    }, [keycard, identifier, funcs, safeSendMessage, lastInitializedRef]);
+    }, [keycard, identifier, plugin, safeSendMessage, lastInitializedRef]);
 
     const sendQueueCommand = useCallback(
       async (command: string, payload?: any) => {
@@ -213,18 +201,18 @@ export function useWorker(config: WorkerConfig) {
         debugLog(`[HOOK] ADD_TASK ${task.name || 'unnamed'} to ${keycard}/${identifier}`);
         return sendQueueCommand(QUEUE_COMMAND.ADD, { task: task });
       },
-      [sendQueueCommand, funcs, debugLog]
+      [sendQueueCommand, plugin, debugLog]
     );
 
     const start = useCallback(async () => {
       debugLog(`[HOOK] START queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.START);
-    }, [sendQueueCommand, funcs, debugLog]);
+    }, [sendQueueCommand, plugin, debugLog]);
 
     const stop = useCallback(async () => {
       debugLog(`[HOOK] STOP queue ${keycard}/${identifier}`);
       return sendQueueCommand(QUEUE_COMMAND.STOP);
-    }, [sendQueueCommand, funcs, debugLog]);
+    }, [sendQueueCommand, plugin, debugLog]);
 
     const resume = useCallback(async () => {
       debugLog(`[HOOK] RESUME queue ${keycard}/${identifier}`);
@@ -281,7 +269,7 @@ export function useWorker(config: WorkerConfig) {
           })),
         });
       },
-      [funcs, sendQueueCommand, debugLog]
+      [plugin, sendQueueCommand, debugLog]
     );
 
     const _delete = useCallback(
@@ -290,10 +278,10 @@ export function useWorker(config: WorkerConfig) {
         debugLog(`[HOOK] DELETE_TASKS ${taskIds.length} tasks from ${keycard}/${identifier}`);
 
         const result = await sendQueueCommand(QUEUE_COMMAND.CANCEL_TASKS, { taskIds });
-        funcs.deleteTasks(taskIds);
+        plugin.deleteTasks(taskIds);
         return result;
       },
-      [funcs, sendQueueCommand, debugLog]
+      [plugin, sendQueueCommand, debugLog]
     );
 
     const skips = useCallback(
@@ -307,20 +295,20 @@ export function useWorker(config: WorkerConfig) {
         taskIds.forEach((id) => {
           updates[id] = { status: 'Skipped', isQueued: false };
         });
-        funcs.updateTasks(updates);
+        plugin.updateTasks(updates);
         return result;
       },
-      [funcs, sendQueueCommand, debugLog]
+      [plugin, sendQueueCommand, debugLog]
     );
 
     const retries = useCallback(
       async (taskIds: string[]) => {
-        const tasks = funcs.getTasks().filter((t) => taskIds.includes(t.id));
+        const tasks = plugin.getTasks().filter((t) => taskIds.includes(t.id));
         if (tasks.length === 0) return { success: true };
         debugLog(`[HOOK] RETRY_TASKS ${taskIds.length} tasks in ${keycard}/${identifier}`);
 
         tasks.forEach((task) => {
-          funcs.updateTask(task.id, {
+          plugin.updateTask(task.id, {
             status: 'Waiting',
             errorMessage: undefined,
             isQueued: true,
@@ -336,7 +324,7 @@ export function useWorker(config: WorkerConfig) {
           })),
         });
       },
-      [funcs, sendQueueCommand, debugLog]
+      [plugin, sendQueueCommand, debugLog]
     );
 
     const sendDirectCommand = useCallback(
