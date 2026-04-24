@@ -81,7 +81,7 @@ export function TaskTable() {
     config,
     taskConfig,
     updateTaskConfig,
-    addTask,
+    createTask,
     isRunning,
   } = useTestTaskStore(
     useShallow((state: any) => ({
@@ -94,7 +94,7 @@ export function TaskTable() {
       config: state.config,
       taskConfig: state.taskConfig,
       updateTaskConfig: state.updateTaskConfig,
-      addTask: state.addTask,
+      createTask: state.createTask,
       isRunning: state.isRunning,
     }))
   );
@@ -129,12 +129,8 @@ export function TaskTable() {
   }, [selectedIds]);
 
   const handleAddRow = useCallback(() => {
-    addTask({
-      id: crypto.randomUUID(),
-      no: tasks.length + 1,
+    createTask({
       name: `Task ${tasks.length + 1}`,
-      status: 'Draft',
-      progress: 0,
       payload: {
         model: config.model,
         ratio: config.ratio,
@@ -151,7 +147,7 @@ export function TaskTable() {
         });
       }
     }, 100);
-  }, [tasks.length, config.model, config.ratio, addTask]);
+  }, [tasks.length, config.model, config.ratio, createTask]);
 
   const handleDeleteSelected = useCallback(async () => {
     await taskWorker.deleteTasks(selectedIds);

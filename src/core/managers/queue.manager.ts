@@ -291,16 +291,6 @@ export class QueueManager {
     }
   }
 
-  async pause(keycard: string, identifier: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] PAUSE queue ${keycard}/${identifier}`);
-    const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
-    if (entry) {
-      entry.queue.pause();
-      await this.persistState();
-      this.logQueueState(keycard, identifier, 'PAUSE');
-    }
-  }
 
   async resume(keycard: string, identifier: string): Promise<void> {
     this.getDebugLog(keycard)(`[DEBUG] RESUME queue ${keycard}/${identifier}`);

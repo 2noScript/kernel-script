@@ -6,7 +6,6 @@ export const QUEUE_COMMAND = {
   ADD_MANY: 'ADD_MANY',
   START: 'START',
   STOP: 'STOP',
-  PAUSE: 'PAUSE',
   RESUME: 'RESUME',
   CLEAR: 'CLEAR',
   GET_STATUS: 'GET_STATUS',

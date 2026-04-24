@@ -3,6 +3,7 @@ import type { BaseEngine, Task, TaskInput, TaskConfig, EngineResult } from '@/co
 import { type QueueStatus } from '@/core/managers/queue.manager';
 import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
 
+
 export interface WorkerMethods {
   addTask: (task: TaskInput) => Promise<any>;
   start: () => Promise<any>;
@@ -74,11 +75,10 @@ export function useWorker(config: WorkerConfig) {
     const lastInitializedRef = useRef<string | undefined>(undefined);
 
     useEffect(() => {
-      const currentId = identifier || '';
-      const needsSync = lastInitializedRef.current !== currentId;
+      const needsSync = lastInitializedRef.current !== identifier;
 
       if (needsSync) {
-        lastInitializedRef.current = currentId;
+        lastInitializedRef.current = identifier;
         debugLog(`[HOOK] SYNC: Initial sync for ${keycard}/${identifier}`);
         safeSendMessage(
           {
@@ -221,10 +221,6 @@ export function useWorker(config: WorkerConfig) {
       return sendQueueCommand(QUEUE_COMMAND.STOP);
     }, [sendQueueCommand, funcs, debugLog]);
 
-    const pause = useCallback(async () => {
-      debugLog(`[HOOK] PAUSE queue ${keycard}/${identifier}`);
-      return sendQueueCommand(QUEUE_COMMAND.PAUSE);
-    }, [sendQueueCommand, debugLog]);
 
     const resume = useCallback(async () => {
       debugLog(`[HOOK] RESUME queue ${keycard}/${identifier}`);
@@ -386,7 +382,7 @@ export function useWorker(config: WorkerConfig) {
       addTask,
       start,
       stop,
-      pause,
+      // pause,
       resume,
       clear,
       getStatus,

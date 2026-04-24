@@ -75,11 +75,6 @@ export const createQueueHandler = ({ queueManager, debugLog }: CommandHandlerDep
         handleAsyncCommand(queueManager.stop(keycard, identifier));
         return { async: true };
 
-      case QUEUE_COMMAND.PAUSE:
-        debugLog(`[BOOTSTRAP] PAUSE queue ${keycard}/${identifier}`);
-        handleAsyncCommand(queueManager.pause(keycard, identifier));
-        return { async: true };
-
       case QUEUE_COMMAND.RESUME:
         debugLog(`[BOOTSTRAP] RESUME queue ${keycard}/${identifier}`);
         handleAsyncCommand(queueManager.resume(keycard, identifier));
