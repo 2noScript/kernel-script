@@ -7,17 +7,9 @@ export type SerializedDirectState = {
 };
 
 export class PersistenceManager {
-  private storageKey: string;
-
-  constructor(storageKey: string = 'QUEUE_MANAGER_STATE') {
-    this.storageKey = storageKey;
-  }
-
   async saveQueueStates(states: Record<string, SerializedQueueState>): Promise<void> {
     try {
-      if (chrome.storage) {
-        await chrome.storage.local.set({ [this.storageKey]: states });
-      }
+      await chrome.storage.local.set({ [`KERNEL_SCRIPT_QUEUE`]: states });
     } catch (e) {
       console.error('Failed to persist queue states:', e);
     }
@@ -25,12 +17,10 @@ export class PersistenceManager {
 
   async loadQueueStates(): Promise<Record<string, SerializedQueueState>> {
     try {
-      if (chrome.storage) {
-        const result = await chrome.storage.local.get(this.storageKey);
-        const stored = result[this.storageKey];
-        if (stored && typeof stored === 'object') {
-          return stored as unknown as Record<string, SerializedQueueState>;
-        }
+      const result = await chrome.storage.local.get(`KERNEL_SCRIPT_QUEUE`);
+      const stored = result[`KERNEL_SCRIPT_QUEUE`];
+      if (stored && typeof stored === 'object') {
+        return stored as unknown as Record<string, SerializedQueueState>;
       }
     } catch (e) {
       console.error('Failed to load queue states:', e);
@@ -40,24 +30,20 @@ export class PersistenceManager {
 
   async saveDirectStates(states: Record<string, SerializedDirectState>): Promise<void> {
     try {
-      const directKey = `${this.storageKey}_DIRECT`;
-      if (chrome.storage) {
-        await chrome.storage.local.set({ [directKey]: states });
-      }
+      const directKey = `KERNEL_SCRIPT__DIRECT`;
+      await chrome.storage.local.set({ [directKey]: states });
     } catch (e) {
       console.error('Failed to persist direct states:', e);
     }
   }
 
   async loadDirectStates() {
-    const directKey = `${this.storageKey}_DIRECT`;
+    const directKey = `KERNEL_SCRIPT__DIRECT`;
     try {
-      if (chrome.storage) {
-        const result = await chrome.storage.local.get(directKey);
-        const stored = result[directKey];
-        if (stored && typeof stored === 'object') {
-          return stored as unknown as Record<string, SerializedDirectState>;
-        }
+      const result = await chrome.storage.local.get(directKey);
+      const stored = result[directKey];
+      if (stored && typeof stored === 'object') {
+        return stored as unknown as Record<string, SerializedDirectState>;
       }
     } catch (e) {
       console.error('Failed to load direct states:', e);

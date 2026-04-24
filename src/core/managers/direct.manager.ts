@@ -1,7 +1,7 @@
 import { engineHub } from '@/core/hubs/engine.hub';
 import { TaskContext } from '@/core/contexts/task.context';
-import { PersistenceManager } from '@/core/managers/persistence.manager';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
+import { persistenceManager } from '@/core/managers/persistence.manager';
 export type { DirectOptions } from '@/core/types';
 
 interface PlatformDirectOptions {
@@ -21,14 +21,12 @@ export class DirectManager {
   private platformOptions: Map<string, PlatformDirectOptions[]> = new Map();
   private defaultOptions: PlatformDirectOptions;
   private runningTasks: Map<string, Task> = new Map();
-  private persistenceManager: PersistenceManager;
 
   constructor(options: DirectOptions = {}) {
     this.defaultOptions = {
       onTasksUpdate: options.onTasksUpdate,
       onTaskComplete: options.onTaskComplete,
     };
-    this.persistenceManager = new PersistenceManager(options.storageKey || 'DIRECT_MANAGER_STATE');
   }
 
   private getDebugLog(keycard: string): (...args: unknown[]) => void {
@@ -178,11 +176,11 @@ export class DirectManager {
     for (const key of this.runningTasks.keys()) {
       states[key] = { isRunning: true };
     }
-    await this.persistenceManager.saveDirectStates(states);
+    await persistenceManager.saveDirectStates(states);
   }
 
   async hydrate(): Promise<void> {
-    const states = await this.persistenceManager.loadDirectStates();
+    const states = await persistenceManager.loadDirectStates();
     if (!states) return;
 
     for (const key in states) {
