@@ -15,7 +15,7 @@ export type SetupOptions = {
 export const setupKernelScript = (engineRegistry: EngineRegistry, options: SetupOptions = {}) => {
   const { debug = false, storageKey } = options;
   const broadcast = createBroadcast();
-  const queueManager = getQueueManager({ debug, storageKey });
+  const queueManager = getQueueManager({ storageKey });
   const directManager = getDirectManager({ debug });
 
   const debugLog = (...args: unknown[]) => {
@@ -25,7 +25,7 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
 
   registerEngines(engineRegistry.getEngines(), queueManager);
 
-  queueManager.registerOptions('*', {
+  queueManager.registerOptions({
     debugLog,
     onTasksUpdate: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => {
       broadcast({

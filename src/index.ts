@@ -12,7 +12,7 @@ export type {
   BaseEngine,
   AsyncResult,
 } from '@/core/types';
-export * from '@/core/store/base-task.store';
+export * from '@/core/store/task.store';
 export { useWorker, type WorkerMethods } from '@/core/hooks/use-worker';
 export { setupKernelScript, type SetupOptions } from '@/core/background';
 export { registerEngines, createEngineRegistry } from '@/core/registry';

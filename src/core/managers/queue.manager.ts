@@ -39,21 +39,19 @@ interface QueueEntry {
 
 export class QueueManager {
   private queues: Map<string, QueueEntry> = new Map();
-  private defaultOptions: Partial<QueueOptions>;
-  private platformOptions: Map<string, QueueOptions[]> = new Map();
+  private options: Partial<QueueOptions>;
   private runningQueues: Set<string> = new Set();
   private concurrencyMap: Map<string, number> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
   private persistenceManager: PersistenceManager;
 
   constructor(options: Partial<QueueOptions>) {
-    this.defaultOptions = options;
+    this.options = options;
     this.persistenceManager = new PersistenceManager(options.storageKey);
   }
 
-  private getDebugLog(keycard: string): (...args: unknown[]) => void {
-    const options = this.getOptions(keycard);
-    const debugLog = options.find((o) => o.debugLog)?.debugLog;
+  private getDebugLog(): (...args: unknown[]) => void {
+    const debugLog = this.options.debugLog;
     if (debugLog) {
       return debugLog;
     }
@@ -61,53 +59,31 @@ export class QueueManager {
   }
 
   private logQueueState(keycard: string, identifier: string, action: string): void {
-    const debug = this.getDebugLog(keycard);
+    const debug = this.getDebugLog();
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (!entry) {
       debug(`[Queue] ${action} - Queue not found for key: ${key}`);
       return;
     }
-    const taskSummary = entry.tasks
-      .map((t) => `[${t.id}] ${t.status}${t.name ? ` (${t.name})` : ''}`)
-      .join(', ');
     debug(
-      `[Queue] ${action} | Key: ${key} | Tasks: ${entry.tasks.length} | Queue size: ${entry.queue.size} | Pending: ${entry.queue.pending} | isRunning: ${!entry.queue.isPaused} | Tasks: ${taskSummary}`
+      `[Queue] ${action} | Key: ${key} | Tasks: ${entry.tasks.length} | Queue size: ${entry.queue.size} | Pending: ${entry.queue.pending} | isRunning: ${!entry.queue.isPaused}`
     );
+    console.table(entry.tasks);
   }
 
   private getQueueKey(keycard: string, identifier: string): string {
-    if (identifier) return `${keycard}__${identifier}`;
-    return keycard;
+    return `${keycard}__${identifier}`;
   }
 
-  registerOptions(keycard: string, options: Partial<QueueOptions>): () => void {
-    if (!this.platformOptions.has(keycard)) {
-      this.platformOptions.set(keycard, []);
-    }
-    this.platformOptions.get(keycard)!.push(options as QueueOptions);
-
-    return () => this.unregisterOptions(keycard, options as QueueOptions);
+  registerOptions(options: Partial<QueueOptions>) {
+    this.options = {
+      ...this.options,
+      ...options,
+    };
   }
 
-  unregisterOptions(keycard: string, options: QueueOptions): void {
-    const list = this.platformOptions.get(keycard);
-    if (list) {
-      const index = list.indexOf(options);
-      if (index !== -1) {
-        list.splice(index, 1);
-      }
-      if (list.length === 0) {
-        this.platformOptions.delete(keycard);
-      }
-    }
-  }
-
-  private getOptions(keycard: string): QueueOptions[] {
-    const platformSpecific = this.platformOptions.get(keycard) || [];
-    const global = this.platformOptions.get('*') || [];
-    return [...platformSpecific, ...global];
-  }
+  unregisterOptions(options: QueueOptions): void {}
 
   private getOrCreateQueue(keycard: string, identifier: string): QueueEntry {
     const key = this.getQueueKey(keycard, identifier);
@@ -148,11 +124,6 @@ export class QueueManager {
     return entry;
   }
 
-  // Getter for legacy/global options to avoid breaking things during refactor
-  private get options(): Partial<QueueOptions> {
-    return this.defaultOptions;
-  }
-
   setConcurrency(keycard: string, concurrency: number): void {
     this.concurrencyMap.set(keycard, concurrency);
     // Update all active queues for this platform
@@ -168,9 +139,6 @@ export class QueueManager {
   }
 
   async add(keycard: string, identifier: string, task: Task): Promise<void> {
-    this.getDebugLog(keycard)(
-      `[DEBUG] ADD task ${task.id} (${task.name || 'unnamed'}) to ${keycard}/${identifier}`
-    );
     const entry = this.getOrCreateQueue(keycard, identifier);
     const { queue, tasks, queuedIds } = entry;
 
@@ -197,9 +165,7 @@ export class QueueManager {
   }
 
   async addMany(keycard: string, identifier: string, newTasks: Task[]): Promise<void> {
-    this.getDebugLog(keycard)(
-      `[DEBUG] ADD_MANY ${newTasks.length} tasks to ${keycard}/${identifier}`
-    );
+    this.getDebugLog()(`[DEBUG] ADD_MANY ${newTasks.length} tasks to ${keycard}/${identifier}`);
     const entry = this.getOrCreateQueue(keycard, identifier);
     const { queue, tasks, queuedIds } = entry;
 
@@ -228,7 +194,7 @@ export class QueueManager {
   }
 
   async start(keycard: string, identifier: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] START queue ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] START queue ${keycard}/${identifier}`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -260,7 +226,7 @@ export class QueueManager {
   }
 
   async stop(keycard: string, identifier: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] STOP queue ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] STOP queue ${keycard}/${identifier}`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -291,9 +257,8 @@ export class QueueManager {
     }
   }
 
-
   async resume(keycard: string, identifier: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] RESUME queue ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] RESUME queue ${keycard}/${identifier}`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     if (entry) {
@@ -304,7 +269,7 @@ export class QueueManager {
   }
 
   async clear(keycard: string, identifier: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] CLEAR queue ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] CLEAR queue ${keycard}/${identifier}`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
 
@@ -353,7 +318,7 @@ export class QueueManager {
    * Stops execution AND removes the task from the project entirely.
    */
   async cancelTask(keycard: string, identifier: string, taskId: string): Promise<void> {
-    this.getDebugLog(keycard)(`[DEBUG] CANCEL_TASK ${taskId} from ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] CANCEL_TASK ${taskId} from ${keycard}/${identifier}`);
     // Trigger AbortController if it exists
     const controller = this.abortControllers.get(taskId);
     if (controller) {
@@ -373,7 +338,7 @@ export class QueueManager {
   }
 
   getStatus(keycard: string, identifier: string): QueueStatus {
-    this.getDebugLog(keycard)(`[DEBUG] GET_STATUS ${keycard}/${identifier}`);
+    this.getDebugLog()(`[DEBUG] GET_STATUS ${keycard}/${identifier}`);
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
 
@@ -394,7 +359,7 @@ export class QueueManager {
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
     const tasks = entry?.tasks || [];
-    this.getDebugLog(keycard)(`[DEBUG] GET_TASKS ${keycard}/${identifier}, count: ${tasks.length}`);
+    this.getDebugLog()(`[DEBUG] GET_TASKS ${keycard}/${identifier}, count: ${tasks.length}`);
     return tasks;
   }
 
@@ -433,7 +398,7 @@ export class QueueManager {
 
     const taskIndex = entry.tasks.findIndex((t) => t.id === task.id);
     if (taskIndex === -1) {
-      this.getDebugLog(keycard)(`[QueueManager] Task ${task.id} was removed. Skipping execution.`);
+      this.getDebugLog()(`[QueueManager] Task ${task.id} was removed. Skipping execution.`);
       return;
     }
 
@@ -458,12 +423,12 @@ export class QueueManager {
 
     if (delayMax > 0) {
       const delayMs = Math.floor(Math.random() * (delayMax - delayMin + 1) + delayMin) * 1000;
-      this.getDebugLog(keycard)(`[QueueManager] Delaying task ${task.id} for ${delayMs}ms...`);
+      this.getDebugLog()(`[QueueManager] Delaying task ${task.id} for ${delayMs}ms...`);
       try {
         await sleep(delayMs, controller.signal);
       } catch (err) {
         if (err instanceof Error && err.message === 'CANCELLED') {
-          this.getDebugLog(keycard)(`[QueueManager] Task ${task.id} cancelled during delay`);
+          this.getDebugLog()(`[QueueManager] Task ${task.id} cancelled during delay`);
           entry.tasks[taskIndex] = {
             ...currentTask,
             status: 'Waiting',
@@ -487,8 +452,7 @@ export class QueueManager {
 
     this.logQueueState(keycard, identifier, `PROCESS_START ${task.id}`);
 
-    const opts = this.getOptions(keycard);
-    opts.forEach((opt) => opt.onTaskStart?.(keycard, identifier, task.id));
+    this.options.onTaskStart?.(keycard, identifier, task.id);
     this.notifyTasksUpdate(keycard, identifier, entry.tasks);
 
     // Create TaskContext for this run
@@ -522,7 +486,7 @@ export class QueueManager {
         // changed the state while we were waiting. We MUST bail out now to
         // avoid overwriting the manual state change.
         if (finTask.status !== 'Running') {
-          this.getDebugLog(keycard)(
+          this.getDebugLog()(
             `Task ${task.id} finished but its status was already changed to ${finTask.status}. Bailing out.`
           );
           return;
@@ -569,7 +533,7 @@ export class QueueManager {
         this.updateTasks(keycard, identifier, entry.tasks);
       }
 
-      opts.forEach((opt) => opt.onTaskComplete?.(keycard, identifier, task.id, result));
+      this.options.onTaskComplete?.(keycard, identifier, task.id, result);
     } catch (error) {
       const idx = entry.tasks.findIndex((t) => t.id === task.id);
       const errorTask = entry.tasks[idx];
@@ -607,12 +571,10 @@ export class QueueManager {
         this.updateTasks(keycard, identifier, entry.tasks);
       }
 
-      opts.forEach((opt) =>
-        opt.onTaskComplete?.(keycard, identifier, task.id, {
-          success: false,
-          error: String(error),
-        })
-      );
+      this.options.onTaskComplete?.(keycard, identifier, task.id, {
+        success: false,
+        error: String(error),
+      });
     } finally {
       this.abortControllers.delete(task.id);
       entry.queuedIds.delete(task.id);
@@ -643,8 +605,7 @@ export class QueueManager {
       this.notifyStatusChange(keycard, identifier);
       this.notifyTasksUpdate(keycard, identifier, entry.tasks);
 
-      const opts = this.getOptions(keycard);
-      opts.forEach((opt) => opt.onQueueEmpty?.(keycard, identifier));
+      this.options.onQueueEmpty?.(keycard, identifier);
     }
   }
 
@@ -653,8 +614,7 @@ export class QueueManager {
     const entry = this.queues.get(key);
     const count = (entry?.queue.size || 0) + (entry?.queue.pending || 0);
 
-    const opts = this.getOptions(keycard);
-    opts.forEach((opt) => opt.onPendingCountChange?.(keycard, identifier, count));
+    this.options.onPendingCountChange?.(keycard, identifier, count);
   }
 
   private notifyTasksUpdate(keycard: string, identifier: string, tasks: Task[]): void {
@@ -666,8 +626,7 @@ export class QueueManager {
       isRunning: !entry?.queue.isPaused || this.runningQueues.has(key),
     };
 
-    const opts = this.getOptions(keycard);
-    opts.forEach((opt) => opt.onTasksUpdate?.(keycard, identifier, tasks, status));
+    this.options.onTasksUpdate?.(keycard, identifier, tasks, status);
   }
 
   // --- PERSISTENCE & HYDRATION ---
@@ -689,9 +648,7 @@ export class QueueManager {
     if (entry) {
       entry.taskConfig = taskConfig;
       entry.queue.concurrency = taskConfig.threads;
-      this.getDebugLog(keycard)(
-        `[QueueManager] Updated concurrency for ${key} to ${taskConfig.threads}`
-      );
+      this.getDebugLog()(`[QueueManager] Updated concurrency for ${key} to ${taskConfig.threads}`);
     }
     this.concurrencyMap.set(keycard, taskConfig.threads);
   }
