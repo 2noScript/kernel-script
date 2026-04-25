@@ -68,6 +68,32 @@ const TaskRow = memo(
   }
 );
 
+function DelayCountdown({ delayUntil }: { delayUntil: number }) {
+  const [remaining, setRemaining] = useState(
+    Math.max(0, Math.ceil((delayUntil - Date.now()) / 1000))
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newRemaining = Math.max(0, Math.ceil((delayUntil - Date.now()) / 1000));
+      setRemaining(newRemaining);
+      if (newRemaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [delayUntil]);
+
+  if (remaining <= 0) return null;
+
+  return (
+    <div className="text-[9px] font-bold text-sky-500/70 animate-pulse">
+      Bắt đầu sau {remaining}s...
+    </div>
+  );
+}
+
 export function TaskTable() {
   const worker = useTaskWorker();
 
@@ -275,6 +301,11 @@ export function TaskTable() {
                   <Clock className="w-2.5 h-2.5" />
                   <span>Previous mission</span>
                 </div>
+              ) : row.original.delayUntil && row.original.delayUntil > Date.now() ? (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-2.5 h-2.5 animate-pulse" />
+                  <span>Waiting...</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-1">
                   {row.original.status === 'Completed' && <CheckCircle2 className="w-2.5 h-2.5" />}
@@ -292,6 +323,9 @@ export function TaskTable() {
                 </div>
               )}
             </Badge>
+            {row.original.delayUntil && row.original.delayUntil > Date.now() && (
+              <DelayCountdown delayUntil={row.original.delayUntil} />
+            )}
             <div className="flex gap-2">
               {(row.original.status === 'Error' ||
                 row.original.status === 'Completed' ||

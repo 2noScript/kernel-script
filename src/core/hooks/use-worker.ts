@@ -227,15 +227,18 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
           case 'TASK_CANCELLED':
             debugLog(`[HOOK] TASK_CANCELLED: ${data.taskId}`);
             if (data.task) {
-              setTasks((prev) => {
-                const idx = prev.findIndex((t) => t.id === data.taskId);
-                if (idx !== -1) {
-                  const updated = [...prev];
-                  updated[idx] = { ...updated[idx], ...data.task };
-                  return updated;
-                }
-                return prev;
-              });
+              setTasks((prev) =>
+                prev.map((t) => (t.id === data.taskId ? { ...t, ...data.task } : t))
+              );
+            }
+            break;
+
+          case 'TASK_DELAYING':
+            debugLog(`[HOOK] TASK_DELAYING: ${data.taskId}, delayUntil: ${data.task?.delayUntil}`);
+            if (data.task) {
+              setTasks((prev) =>
+                prev.map((t) => (t.id === data.taskId ? { ...t, ...data.task } : t))
+              );
             }
             break;
 

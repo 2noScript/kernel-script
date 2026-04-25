@@ -8,6 +8,7 @@ export type Task = {
   result?: EngineResult;
   errorMessage?: string;
   isQueued: boolean;
+  delayUntil?: number;
   createAt: number;
   updateAt: number;
   histories: TaskHistory[];

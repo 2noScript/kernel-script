@@ -403,6 +403,18 @@ export class QueueService {
 
     if (delayMax > 0) {
       const delayMs = Math.floor(Math.random() * (delayMax - delayMin + 1) + delayMin) * 1000;
+      const delayUntil = Date.now() + delayMs;
+
+      this.updateTaskStatus(keycard, identifier, task.id, { delayUntil });
+      await taskRepository.saveTask(keycard, identifier, { ...task, delayUntil });
+
+      emitEvent(EVENTS.TASK_DELAYING, {
+        keycard,
+        identifier,
+        taskId: task.id,
+        task: { ...task, delayUntil },
+      });
+
       try {
         await sleep(delayMs, controller.signal);
       } catch (err) {
@@ -410,6 +422,7 @@ export class QueueService {
           this.updateTaskStatus(keycard, identifier, task.id, {
             status: 'Waiting',
             isQueued: false,
+            delayUntil: undefined,
           });
           this.abortControllers.delete(task.id);
           entry.queuedIds.delete(task.id);
@@ -419,6 +432,7 @@ export class QueueService {
       }
     }
 
+    this.updateTaskStatus(keycard, identifier, task.id, { delayUntil: undefined });
     this.callbacks.onTaskStart?.(keycard, identifier, task.id);
     this.debugLog(`[Queue] PROCESS_START ${task.id}`);
 

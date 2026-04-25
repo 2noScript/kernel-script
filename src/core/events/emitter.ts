@@ -5,6 +5,7 @@ export const EVENTS = {
   TASK_COMPLETED: 'TASK_COMPLETED',
   TASK_ERROR: 'TASK_ERROR',
   TASK_CANCELLED: 'TASK_CANCELLED',
+  TASK_DELAYING: 'TASK_DELAYING',
   TASK_UPDATED: 'TASK_UPDATED',
   TASKS_UPDATED: 'TASKS_UPDATED',
   QUEUE_EMPTY: 'QUEUE_EMPTY',
@@ -122,6 +123,16 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
     broadcast({
       type: 'WORKER_EVENT',
       event: EVENTS.TASK_CANCELLED,
+      keycard,
+      identifier,
+      data,
+    });
+  }
+
+  if (event === EVENTS.TASK_DELAYING) {
+    broadcast({
+      type: 'WORKER_EVENT',
+      event: EVENTS.TASK_DELAYING,
       keycard,
       identifier,
       data,
