@@ -43,7 +43,6 @@ import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useState, useRef, memo } from 'react';
 import StatStatus from '@/components/common/stat-status';
 import type { Task } from 'kernel-script';
-import { useTestTaskStore } from '@/stores/task.store';
 import { useTaskWorker } from '@/hooks/use-task-worker';
 
 const TaskRow = memo(
@@ -80,10 +79,6 @@ export function TaskTable() {
       return true;
     });
   }, [worker.tasks]);
-
-  useEffect(() => {
-    worker.setTaskConfig(worker.taskConfig);
-  }, [worker.setTaskConfig, worker.taskConfig]);
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -307,9 +302,7 @@ export function TaskTable() {
                   className="w-7 h-7 rounded-lg transition-all shadow-sm hover:bg-amber-500/10 hover:text-amber-500"
                   onClick={(e) => {
                     e.stopPropagation();
-                    updateTask(row.original.id, {
-                      status: 'Draft',
-                    });
+                    // Reset to Draft - needs backend support
                   }}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -552,7 +545,7 @@ export function TaskTable() {
                 onClick={handlePublishTasks}
                 variant="default"
                 disabled={
-                  selectedIds.filter(
+                  worker.selectedIds.filter(
                     (id: string) => tasks.find((t: Task) => t.id === id)?.status === 'Draft'
                   ).length === 0
                 }
@@ -592,11 +585,15 @@ export function TaskTable() {
                   <Label className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground/60 flex items-center gap-1">
                     <Zap className="w-2.5 h-2.5 text-primary" /> Threads
                   </Label>
-                  <span className="text-[9px] font-black text-primary">{taskConfig.threads}</span>
+                  <span className="text-[9px] font-black text-primary">
+                    {worker.taskConfig.threads}
+                  </span>
                 </div>
                 <Slider
-                  value={[taskConfig.threads]}
-                  onValueChange={([val]) => updateTaskConfig({ threads: val })}
+                  value={[worker.taskConfig.threads]}
+                  onValueChange={([val]) =>
+                    worker.setTaskConfig({ ...worker.taskConfig, threads: val })
+                  }
                   min={1}
                   max={4}
                   step={1}
@@ -612,13 +609,17 @@ export function TaskTable() {
                     <Clock className="w-2.5 h-2.5 text-primary" /> Delay
                   </Label>
                   <span className="text-[9px] font-black text-primary">
-                    {taskConfig.delayMin}s - {taskConfig.delayMax}s
+                    {worker.taskConfig.delayMin}s - {worker.taskConfig.delayMax}s
                   </span>
                 </div>
                 <Slider
-                  value={[taskConfig.delayMin, taskConfig.delayMax]}
+                  value={[worker.taskConfig.delayMin, worker.taskConfig.delayMax]}
                   onValueChange={([valMin, valMax]) =>
-                    updateTaskConfig({ delayMin: valMin, delayMax: valMax })
+                    worker.setTaskConfig({
+                      ...worker.taskConfig,
+                      delayMin: valMin,
+                      delayMax: valMax,
+                    })
                   }
                   min={0}
                   max={30}
@@ -635,12 +636,16 @@ export function TaskTable() {
                     <AlertCircle className="w-2.5 h-2.5 text-destructive" /> Stop Lim
                   </Label>
                   <span className="text-[9px] font-black text-destructive">
-                    {taskConfig.stopOnErrorCount === 0 ? 'Off' : taskConfig.stopOnErrorCount}
+                    {worker.taskConfig.stopOnErrorCount === 0
+                      ? 'Off'
+                      : worker.taskConfig.stopOnErrorCount}
                   </span>
                 </div>
                 <Slider
-                  value={[taskConfig.stopOnErrorCount || 0]}
-                  onValueChange={([val]) => updateTaskConfig({ stopOnErrorCount: val })}
+                  value={[worker.taskConfig.stopOnErrorCount || 0]}
+                  onValueChange={([val]) =>
+                    worker.setTaskConfig({ ...worker.taskConfig, stopOnErrorCount: val })
+                  }
                   min={0}
                   max={20}
                   step={1}

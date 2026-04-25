@@ -3,7 +3,7 @@ import type { Task, TaskConfig } from '@/core/types';
 import type { BaseEngine, EngineResult } from '@/core/types';
 import { persistenceManager, type SerializedQueueState } from '@/core/managers/persistence.manager';
 import { engineHub } from '@/core/hubs/engine.hub';
-import { TaskContext } from '@/core/contexts/task.context.class';
+import { TaskContext } from '@/core/contexts/task.context';
 import { sleep } from '@/core/helper';
 import { backgroundDb } from '@/core/storage/background-db';
 
@@ -149,20 +149,13 @@ export class QueueManager {
     const { queue, tasks, queuedIds } = entry;
 
     const exists = tasks.find((t) => t.id === task.id);
-    const updatedTask = { ...task };
+    const updatedTask = { ...task, status: 'Draft' as const, isQueued: false };
 
     if (!exists) {
       tasks.push(updatedTask);
     } else {
       const idx = tasks.indexOf(exists);
       tasks[idx] = updatedTask;
-    }
-
-    // Only add to PQueue if it's in Waiting status and not already queued
-    if (updatedTask.status === 'Waiting' && !queuedIds.has(updatedTask.id)) {
-      updatedTask.isQueued = true;
-      queuedIds.add(updatedTask.id);
-      queue.add(() => this.processTask(keycard, identifier, updatedTask));
     }
 
     this.updateTasks(keycard, identifier, tasks);

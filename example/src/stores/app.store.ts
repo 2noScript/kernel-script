@@ -1,11 +1,11 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 
-interface AppState {
+interface AppStoreState {
   isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
+  setLoading: (loading: boolean) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppStoreState>((set) => ({
   isLoading: false,
-  setIsLoading: (loading) => set({ isLoading: loading }),
+  setLoading: (loading) => set({ isLoading: loading }),
 }));

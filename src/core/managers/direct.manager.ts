@@ -1,5 +1,5 @@
 import { engineHub } from '@/core/hubs/engine.hub';
-import { TaskContext } from '@/core/contexts/task.context.class';
+import { TaskContext } from '@/core/contexts/task.context';
 import type { Task, EngineResult, DirectOptions } from '@/core/types';
 import { persistenceManager } from '@/core/managers/persistence.manager';
 export type { DirectOptions } from '@/core/types';

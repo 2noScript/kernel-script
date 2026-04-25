@@ -185,11 +185,25 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
   const add = useCallback(
     async (task: TaskInput) => {
       debugLog(`[HOOK] ADD_TASK ${task.name || 'unnamed'}`);
-      const result = await sendQueueCommand(QUEUE_COMMAND.ADD, { task });
+      const now = Date.now();
+      const no = tasks.length > 0 ? Math.max(...tasks.map((t) => t.no)) + 1 : 1;
+      const draftTask: Task = {
+        id: crypto.randomUUID(),
+        no,
+        name: task.name || 'Untitled',
+        payload: task.payload || {},
+        status: 'Draft',
+        progress: 0,
+        createAt: now,
+        updateAt: now,
+        histories: [],
+        isQueued: false,
+      };
+      const result = await sendQueueCommand(QUEUE_COMMAND.ADD, { task: draftTask });
       syncFromBackground();
       return result;
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, syncFromBackground, debugLog, tasks]
   );
 
   const addMany = useCallback(
