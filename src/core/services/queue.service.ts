@@ -3,6 +3,8 @@ import type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/common/t
 import { engineHub } from '@/core/common/engine-hub';
 import { TaskContext } from '@/core/common/task.context';
 import { sleep } from '@/core/utils/helper';
+import { taskRepository } from '@/core/repositories/task.repository';
+import { emitEvent, EVENTS } from '@/core/events/emitter';
 
 export interface QueueStatus {
   size: number;
@@ -18,6 +20,7 @@ export interface QueueCallbacks {
     taskId: string,
     result: EngineResult
   ) => void;
+  onTaskCancelled?: (keycard: string, identifier: string, taskId: string) => void;
   onQueueEmpty?: (keycard: string, identifier: string) => void;
 }
 
@@ -266,6 +269,16 @@ export class QueueService {
       tasks[idx].status = 'Waiting';
       tasks[idx].isQueued = false;
       this.tasksMap.set(key, tasks);
+
+      taskRepository.saveTask(keycard, identifier, tasks[idx]);
+
+      this.callbacks.onTaskCancelled?.(keycard, identifier, taskId);
+
+      emitEvent(EVENTS.TASK_CANCELLED, {
+        keycard,
+        identifier,
+        task: tasks[idx],
+      });
     }
   }
 

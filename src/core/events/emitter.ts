@@ -2,8 +2,10 @@ import { hasActivePort } from '@/core/utils/port-tracker';
 
 export const EVENTS = {
   TASK_STARTED: 'TASK_STARTED',
-  TASK_UPDATED: 'TASK_UPDATED',
   TASK_COMPLETED: 'TASK_COMPLETED',
+  TASK_ERROR: 'TASK_ERROR',
+  TASK_CANCELLED: 'TASK_CANCELLED',
+  TASK_UPDATED: 'TASK_UPDATED',
   TASKS_UPDATED: 'TASKS_UPDATED',
   QUEUE_EMPTY: 'QUEUE_EMPTY',
 } as const;
@@ -100,6 +102,26 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
     broadcast({
       type: 'WORKER_EVENT',
       event: EVENTS.TASK_COMPLETED,
+      keycard,
+      identifier,
+      data,
+    });
+  }
+
+  if (event === EVENTS.TASK_ERROR) {
+    broadcast({
+      type: 'WORKER_EVENT',
+      event: EVENTS.TASK_ERROR,
+      keycard,
+      identifier,
+      data,
+    });
+  }
+
+  if (event === EVENTS.TASK_CANCELLED) {
+    broadcast({
+      type: 'WORKER_EVENT',
+      event: EVENTS.TASK_CANCELLED,
       keycard,
       identifier,
       data,

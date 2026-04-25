@@ -55,13 +55,21 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
     ) => {
       const task = await taskRepository.getTask(keycard, identifier, taskId);
       if (task) {
-        task.status = result.success ? 'Completed' : 'Error';
-        task.progress = result.success ? 100 : 0;
-        task.errorMessage = result.error;
         task.updateAt = Date.now();
-        await taskRepository.saveTask(keycard, identifier, task);
+
+        if (result.success) {
+          task.status = 'Completed';
+          task.progress = 100;
+          await taskRepository.saveTask(keycard, identifier, task);
+          emitEvent(EVENTS.TASK_COMPLETED, { keycard, identifier, taskId, task, result });
+        } else {
+          task.status = 'Error';
+          task.progress = 0;
+          task.errorMessage = result.error;
+          await taskRepository.saveTask(keycard, identifier, task);
+          emitEvent(EVENTS.TASK_ERROR, { keycard, identifier, taskId, task, result });
+        }
       }
-      emitEvent(EVENTS.TASK_COMPLETED, { keycard, identifier, taskId, result });
       const tasksAndStatus = await getTasksAndStatus(keycard, identifier);
       emitEvent(EVENTS.TASKS_UPDATED, tasksAndStatus);
       handleHeartbeat(0);
@@ -85,17 +93,25 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
       taskId: string,
       result: EngineResult
     ) => {
+      const isCancelled = result.error === 'CANCELLED' || result.error === 'AbortError';
+      if (isCancelled) return;
+
       const task = await taskRepository.getTask(keycard, identifier, taskId);
       if (task) {
-        task.status = result.success ? 'Completed' : 'Error';
-        task.progress = result.success ? 100 : 0;
-        task.errorMessage = result.error;
         task.updateAt = Date.now();
-        await taskRepository.saveTask(keycard, identifier, task);
-      }
-      const isCancelled = result.error === 'CANCELLED' || result.error === 'AbortError';
-      if (!isCancelled) {
-        emitEvent(EVENTS.TASK_COMPLETED, { keycard, identifier, taskId, result });
+
+        if (result.success) {
+          task.status = 'Completed';
+          task.progress = 100;
+          await taskRepository.saveTask(keycard, identifier, task);
+          emitEvent(EVENTS.TASK_COMPLETED, { keycard, identifier, taskId, task, result });
+        } else {
+          task.status = 'Error';
+          task.progress = 0;
+          task.errorMessage = result.error;
+          await taskRepository.saveTask(keycard, identifier, task);
+          emitEvent(EVENTS.TASK_ERROR, { keycard, identifier, taskId, task, result });
+        }
       }
       const tasksAndStatus = await getTasksAndStatus(keycard, identifier);
       emitEvent(EVENTS.TASKS_UPDATED, tasksAndStatus);

@@ -209,6 +209,24 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
           case 'TASK_COMPLETED':
             debugLog(`[HOOK] TASK_COMPLETED: ${data.taskId}`);
             if (data.task) {
+              setTasks((prev) =>
+                prev.map((t) => (t.id === data.taskId ? { ...t, ...data.task } : t))
+              );
+            }
+            break;
+
+          case 'TASK_ERROR':
+            debugLog(`[HOOK] TASK_ERROR: ${data.taskId}`);
+            if (data.task) {
+              setTasks((prev) =>
+                prev.map((t) => (t.id === data.taskId ? { ...t, ...data.task } : t))
+              );
+            }
+            break;
+
+          case 'TASK_CANCELLED':
+            debugLog(`[HOOK] TASK_CANCELLED: ${data.taskId}`);
+            if (data.task) {
               setTasks((prev) => {
                 const idx = prev.findIndex((t) => t.id === data.taskId);
                 if (idx !== -1) {
