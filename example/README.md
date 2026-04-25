@@ -19,12 +19,12 @@ bun build
 
 ## Using kernel-script
 
-| File                                                           | Description                 |
-| -------------------------------------------------------------- | --------------------------- |
-| [`src/background.ts`](src/background.ts)                       | Engine setup with registry  |
-| [`src/hooks/use-task-worker.ts`](src/hooks/use-task-worker.ts) | useWorker hook              |
-| [`src/stores/task.store.ts`](src/stores/task.store.ts)         | Task store with persistence |
-| [`src/engines/`](src/engines/)                                 | Engine implementations      |
+| File                                                           | Description                |
+| -------------------------------------------------------------- | -------------------------- |
+| [`src/background.ts`](src/background.ts)                       | Engine setup with registry |
+| [`src/hooks/use-task-worker.ts`](src/hooks/use-task-worker.ts) | useWorker hook             |
+| [`src/stores/app.store.ts`](src/stores/app.store.ts)           | App store                  |
+| [`src/engines/`](src/engines/)                                 | Engine implementations     |
 
 ## API Example
 
@@ -40,17 +40,18 @@ setupKernelScript(engineRegistry, {
 
 ```typescript
 // src/hooks/use-task-worker.ts
-import { pluginTask, useWorker } from 'kernel-script';
+import { noopEngine } from '@/engines/noop.engine';
+import { useWorker } from 'kernel-script';
 
 export const useTaskWorker = useWorker({
   engine: noopEngine,
   identifier: 'default',
-  funcs: pluginTask(useTestTaskStore),
 });
 
-// Hook returns: addTask, start, stop, pause, resume, clear,
-// getStatus, getTasks, cancelTask, cancelTasks, publishTasks,
-// deleteTasks, retryTasks, skipTaskIds, setTaskConfig
+// Hook returns: tasks, isRunning, selectedIds, taskConfig, setTaskConfig,
+// createTask, createTasks, deleteTask, deleteTasks, publishTasks, unpublishTasks,
+// queueStart, queueStop, queueCancelTask, queueClear, retryTask, skipTask,
+// toggleSelect, toggleSelectAll, clearSelected, runTask, stopTask, sync
 ```
 
 ## Installation

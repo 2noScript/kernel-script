@@ -64,7 +64,7 @@ registry.register({
 bootstrap(registry, { debug: true });
 
 function TaskQueue() {
-  const { start, pause, publishTasks } = useWorker({
+  const { queueStart, queueStop, publishTasks } = useWorker({
     engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
     identifier: 'default',
   });
@@ -224,20 +224,11 @@ bootstrap(registry, { debug: true });
 import { useWorker, type Task } from 'kernel-script';
 
 function TaskQueue() {
-  const {
-    start,
-    pause,
-    resume,
-    stop,
-    publishTasks,
-    deleteTasks,
-    retryTasks,
-    cancelTasks,
-    skipTaskIds,
-  } = useWorker({
-    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
-    identifier: 'default',
-  });
+  const { queueStart, queueStop, publishTasks, deleteTasks, retryTask, queueCancelTask, skipTask } =
+    useWorker({
+      engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
+      identifier: 'default',
+    });
 
   const handleAddTasks = (tasks: Task[]) => {
     publishTasks(tasks);
@@ -508,7 +499,7 @@ interface WorkerMethods {
 ### Common Issues
 
 **Q: Tasks not executing after adding**
-A: Make sure to call `start()` after adding tasks, or use `publishTasks()` to add and queue in one step.
+A: Make sure to call `queueStart()` after adding tasks, or use `publishTasks()` to add and queue in one step.
 
 **Q: Queue not persisting after extension restart**
 A: Verify `bootstrap()` is called on startup. Check IndexedDB permissions.
