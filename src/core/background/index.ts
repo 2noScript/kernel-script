@@ -6,6 +6,7 @@ import type { EngineResult, QueueStatus, Task } from '@/core/types';
 import { getDirectManager } from '@/core/managers/direct.manager';
 import { createQueueHandler } from '@/core/background/handlers/queue.handler';
 import { createDirectHandler } from '@/core/background/handlers/direct.handler';
+import { addActivePort, onUIPortConnect } from '@/core/background/port-tracker';
 
 export type SetupOptions = {
   debug?: boolean;
@@ -23,6 +24,10 @@ export const setupKernelScript = (engineRegistry: EngineRegistry, options: Setup
   const handleHeartbeat = createHeartbeatHandler();
 
   registerEngines(engineRegistry.getEngines(), queueManager);
+
+  onUIPortConnect((port) => {
+    debugLog(`[BG] UI port connected: ${port.sender?.url || 'unknown'}`);
+  });
 
   queueManager.registerOptions({
     debugLog,

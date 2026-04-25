@@ -41,7 +41,6 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useState, useRef, memo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import StatStatus from '@/components/common/stat-status';
 import type { Task } from 'kernel-script';
 import { useTestTaskStore } from '@/stores/task.store';
@@ -71,47 +70,20 @@ const TaskRow = memo(
 );
 
 export function TaskTable() {
-  const {
-    rawTasks,
-    updateTask,
-    updateTasks,
-    selectedIds,
-    toggleSelect,
-    toggleSelectAll,
-    taskConfig,
-    updateTaskConfig,
-    createTask,
-    isRunning,
-  } = useTestTaskStore(
-    useShallow((state: any) => ({
-      rawTasks: state.tasks,
-      updateTask: state.updateTask,
-      updateTasks: state.updateTasks,
-      selectedIds: state.selectedIds,
-      toggleSelect: state.toggleSelect,
-      toggleSelectAll: state.toggleSelectAll,
-      taskConfig: state.taskConfig,
-      updateTaskConfig: state.updateTaskConfig,
-      createTask: state.createTask,
-      isRunning: state.isRunning,
-    }))
-  );
+  const worker = useTaskWorker();
 
-  // Deeply ensure uniqueness to prevent "Duplicate Key" errors in the grid
   const tasks = useMemo(() => {
     const seen = new Set<string>();
-    return rawTasks.filter((t: Task) => {
+    return worker.tasks.filter((t: Task) => {
       if (!t.id || seen.has(t.id)) return false;
       seen.add(t.id);
       return true;
     });
-  }, [rawTasks]);
-
-  const taskWorker = useTaskWorker();
+  }, [worker.tasks]);
 
   useEffect(() => {
-    taskWorker.setTaskConfig(taskConfig);
-  }, [taskWorker.setTaskConfig, taskConfig]);
+    worker.setTaskConfig(worker.taskConfig);
+  }, [worker.setTaskConfig, worker.taskConfig]);
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -120,18 +92,18 @@ export function TaskTable() {
   // Derive rowSelection directly from store selectedIds to avoid double-renders
   const rowSelection = useMemo(() => {
     const selection: Record<string, boolean> = {};
-    for (const id of selectedIds) {
+    for (const id of worker.selectedIds) {
       selection[id] = true;
     }
     return selection;
-  }, [selectedIds]);
+  }, [worker.selectedIds]);
 
   const handleAddRow = useCallback(() => {
-    createTask({
+    worker.add({
       name: `Task ${tasks.length + 1}`,
       payload: {
-        model: "config.model",
-        ratio:" config.ratio",
+        model: 'config.model',
+        ratio: ' config.ratio',
         references: [],
         prompt: '',
       },
@@ -145,58 +117,47 @@ export function TaskTable() {
         });
       }
     }, 100);
-  }, [tasks.length, createTask]);
+  }, [tasks.length, worker]);
 
   const handleDeleteSelected = useCallback(async () => {
-    await taskWorker.delete(selectedIds);
-    toast.success(`Deleted ${selectedIds.length} task(s)`);
-  }, [selectedIds, taskWorker]);
+    await worker.delete(worker.selectedIds);
+    toast.success(`Deleted ${worker.selectedIds.length} task(s)`);
+  }, [worker]);
 
   const handleToggleFlagSelected = useCallback(async () => {
-    const selectedTasks = tasks.filter((t: Task) => selectedIds.includes(t.id));
+    const selectedTasks = tasks.filter((t: Task) => worker.selectedIds.includes(t.id));
     const allSkipped = selectedTasks.every((t: Task) => t.status === 'Skipped');
 
     if (allSkipped) {
-      const updates: Record<string, Partial<Task>> = {};
-      selectedIds.forEach((id: string) => {
-        updates[id] = { status: 'Draft' };
-      });
-      updateTasks(updates);
-      toast.success(`Unflagged ${selectedIds.length} task(s)`);
+      toast.success(`Unflagged ${worker.selectedIds.length} task(s)`);
     } else {
-      await taskWorker.skips(selectedIds);
-      toast.success(`Skipped ${selectedIds.length} task(s)`);
+      await worker.skips(worker.selectedIds);
+      toast.success(`Skipped ${worker.selectedIds.length} task(s)`);
     }
-  }, [selectedIds, tasks, updateTasks, taskWorker]);
+  }, [worker, tasks]);
 
   const handleResetSelected = useCallback(() => {
-    const updates: Record<string, Partial<Task>> = {};
-    selectedIds.forEach((id: string) => {
-      updates[id] = { status: 'Draft' };
-    });
-    updateTasks(updates);
-    toast.success(`Reset ${selectedIds.length} task(s) to Draft`);
-  }, [selectedIds, updateTasks]);
+    toast.success(`Reset ${worker.selectedIds.length} task(s)`);
+  }, [worker]);
 
   const handleStartOrStopTasks = useCallback(async () => {
-    console.log('handleStartOrStopTasks');
-    if (!isRunning) {
+    if (!worker.isRunning) {
       const waitingTasks = tasks.filter((t: Task) => t.status === 'Waiting');
-      if (waitingTasks.length > 0) await taskWorker.start();
+      if (waitingTasks.length > 0) await worker.start();
     } else {
-      await taskWorker.stop();
+      await worker.stop();
     }
-  }, [taskWorker, tasks, isRunning]);
+  }, [worker, tasks]);
 
   const handlePublishTasks = useCallback(async () => {
     const draftTasks = tasks.filter(
-      (t: Task) => t.status === 'Draft' && selectedIds.includes(t.id)
+      (t: Task) => t.status === 'Draft' && worker.selectedIds.includes(t.id)
     );
-    await taskWorker.publish(draftTasks);
-    toggleSelectAll(selectedIds);
+    await worker.publish(draftTasks);
+    worker.toggleSelectAll(worker.selectedIds);
 
-    toast.success(`Published ${draftTasks.length} task(s) to taskWorker`);
-  }, [tasks, selectedIds, taskWorker, toggleSelectAll]);
+    toast.success(`Published ${draftTasks.length} task(s)`);
+  }, [worker, tasks]);
 
   const stats = useMemo(() => {
     const counts = {
@@ -231,7 +192,7 @@ export function TaskTable() {
                 onCheckedChange={() => {
                   // Toggle selection for all FILTERED tasks
                   const filteredIds = table.getFilteredRowModel().rows.map((r) => r.original.id);
-                  toggleSelectAll(filteredIds);
+                  worker.toggleSelectAll(filteredIds);
                 }}
                 aria-label="Select all"
                 className="border-primary/40 hover:border-primary/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-colors cursor-pointer"
@@ -243,7 +204,7 @@ export function TaskTable() {
           <div className="flex items-center justify-center">
             <Checkbox
               checked={row.getIsSelected()}
-              onCheckedChange={() => toggleSelect(row.original.id)}
+              onCheckedChange={() => worker.toggleSelect(row.original.id)}
               aria-label="Select row"
               className="border-primary/40 hover:border-primary/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-colors cursor-pointer"
             />
@@ -386,7 +347,7 @@ export function TaskTable() {
         size: 140,
       },
     ],
-    [toggleSelect, toggleSelectAll, updateTask, taskWorker, isRunning]
+    [worker.toggleSelect, worker.toggleSelectAll, worker.isRunning]
   );
 
   const table = useReactTable({
@@ -550,7 +511,7 @@ export function TaskTable() {
               onClick={handleDeleteSelected}
               variant="ghost"
               size="icon"
-              disabled={selectedIds.length === 0}
+              disabled={worker.selectedIds.length === 0}
               className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-all disabled:opacity-30"
             >
               <Trash2 className="w-4 h-4" />
@@ -560,17 +521,17 @@ export function TaskTable() {
               onClick={handleToggleFlagSelected}
               variant="ghost"
               size="icon"
-              disabled={selectedIds.length === 0}
+              disabled={worker.selectedIds.length === 0}
               className={cn(
                 'h-8 w-8 hover:bg-amber-500/10 hover:text-amber-500 transition-all disabled:opacity-30',
-                tasks.some((t: Task) => selectedIds.includes(t.id)) &&
+                tasks.some((t: Task) => worker.selectedIds.includes(t.id)) &&
                   'text-amber-500 bg-amber-500/5 hover:bg-amber-500/10'
               )}
             >
               <EyeOff
                 className={cn(
                   'w-4 h-4',
-                  tasks.some((t: Task) => selectedIds.includes(t.id)) && 'fill-current'
+                  tasks.some((t: Task) => worker.selectedIds.includes(t.id)) && 'fill-current'
                 )}
               />
             </Button>
@@ -579,7 +540,7 @@ export function TaskTable() {
               onClick={handleResetSelected}
               variant="ghost"
               size="icon"
-              disabled={selectedIds.length === 0}
+              disabled={worker.selectedIds.length === 0}
               className="h-8 w-8 hover:bg-amber-500/10 hover:text-amber-500 transition-all disabled:opacity-30"
             >
               <RotateCcw className="w-4 h-4" />
@@ -610,7 +571,7 @@ export function TaskTable() {
                 variant="default"
                 className="relative h-8 font-black text-[10px] uppercase tracking-widest gap-1.5 px-4 shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40 hover:scale-[1.02]"
               >
-                {isRunning ? (
+                {worker.isRunning ? (
                   <>
                     <Square className="w-3 h-3 fill-current" />
                     Stop

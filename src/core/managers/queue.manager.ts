@@ -3,8 +3,9 @@ import type { Task, TaskConfig } from '@/core/types';
 import type { BaseEngine, EngineResult } from '@/core/types';
 import { persistenceManager, type SerializedQueueState } from '@/core/managers/persistence.manager';
 import { engineHub } from '@/core/hubs/engine.hub';
-import { TaskContext } from '@/core/contexts/task.context';
+import { TaskContext } from '@/core/contexts/task.context.class';
 import { sleep } from '@/core/helper';
+import { backgroundDb } from '@/core/storage/background-db';
 
 export interface QueueStatus {
   size: number;
@@ -33,7 +34,8 @@ interface QueueEntry {
   tasks: Task[];
   queuedIds: Set<string>;
   consecutiveErrors: number;
-  taskConfig?: TaskConfig;
+  taskConfig: TaskConfig;
+  selectedIds: string[];
 }
 
 export class QueueManager {
@@ -98,6 +100,13 @@ export class QueueManager {
         tasks: [],
         queuedIds: new Set(),
         consecutiveErrors: 0,
+        taskConfig: {
+          threads: concurrency || 1,
+          delayMin: 1,
+          delayMax: 15,
+          stopOnErrorCount: 0,
+        },
+        selectedIds: [],
       };
 
       // Register 'idle' listener to auto-stop when all tasks are finished
@@ -361,6 +370,7 @@ export class QueueManager {
   }
 
   private updateTasks(keycard: string, identifier: string, tasks: Task[]): void {
+    backgroundDb.saveTasks(keycard, identifier, tasks);
     this.notifyTasksUpdate(keycard, identifier, tasks);
   }
 
@@ -594,14 +604,21 @@ export class QueueManager {
   // --- PERSISTENCE & HYDRATION ---
 
   async persistState(): Promise<void> {
-    const states: Record<string, SerializedQueueState> = {};
     for (const [key, entry] of this.queues.entries()) {
-      states[key] = {
-        isRunning: this.runningQueues.has(key),
-      };
-    }
+      const [keycard, identifier] = key.split('__');
+      if (!keycard || !identifier) continue;
 
-    await persistenceManager.saveQueueStates(states);
+      await backgroundDb.saveQueueState(keycard, identifier, {
+        isRunning: this.runningQueues.has(key),
+        status: {
+          size: entry.queue.size,
+          pending: entry.queue.pending,
+          isRunning: !entry.queue.isPaused || this.runningQueues.has(key),
+        },
+        selectedIds: entry.selectedIds,
+        taskConfig: entry.taskConfig,
+      });
+    }
   }
 
   updateTaskConfig(keycard: string, identifier: string, taskConfig: TaskConfig): void {
@@ -615,14 +632,74 @@ export class QueueManager {
     this.concurrencyMap.set(keycard, taskConfig.threads);
   }
 
+  toggleSelect(keycard: string, identifier: string, taskId: string): string[] {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    if (!entry) return [];
+
+    const idx = entry.selectedIds.indexOf(taskId);
+    if (idx === -1) {
+      entry.selectedIds.push(taskId);
+    } else {
+      entry.selectedIds.splice(idx, 1);
+    }
+
+    this.persistState();
+    return entry.selectedIds;
+  }
+
+  toggleSelectAll(keycard: string, identifier: string, taskIds?: string[]): string[] {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    if (!entry) return [];
+
+    const targetIds = taskIds || entry.tasks.map((t) => t.id);
+    const allSelected = targetIds.every((id) => entry.selectedIds.includes(id));
+
+    if (allSelected) {
+      entry.selectedIds = entry.selectedIds.filter((id) => !targetIds.includes(id));
+    } else {
+      const newSelected = new Set([...entry.selectedIds, ...targetIds]);
+      entry.selectedIds = Array.from(newSelected);
+    }
+
+    this.persistState();
+    return entry.selectedIds;
+  }
+
+  clearSelected(keycard: string, identifier: string): string[] {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    if (!entry) return [];
+
+    entry.selectedIds = [];
+    this.persistState();
+    return [];
+  }
+
+  getSelectedIds(keycard: string, identifier: string): string[] {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    return entry?.selectedIds || [];
+  }
+
+  getTaskConfig(keycard: string, identifier: string): TaskConfig {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    return (
+      entry?.taskConfig || {
+        threads: 1,
+        delayMin: 1,
+        delayMax: 15,
+        stopOnErrorCount: 0,
+      }
+    );
+  }
+
   async hydrate(): Promise<void> {
-    const states = await persistenceManager.loadQueueStates();
-    if (!states) return;
+    const statesMap = await backgroundDb.loadAllQueueStates();
 
-    for (const key in states) {
-      const state = states[key];
-      if (!state) continue;
-
+    for (const [key, state] of statesMap.entries()) {
       const [keycard, identifier] = key.split('__');
       if (!keycard || !identifier) continue;
 
@@ -637,6 +714,15 @@ export class QueueManager {
       if (state.isRunning) {
         this.runningQueues.add(key);
       }
+
+      if (state.selectedIds) {
+        entry.selectedIds = state.selectedIds;
+      }
+
+      if (state.taskConfig) {
+        entry.taskConfig = state.taskConfig;
+        entry.queue.concurrency = state.taskConfig.threads;
+      }
     }
   }
 
@@ -649,12 +735,12 @@ export class QueueManager {
       const [keycard, identifier] = key.split('__');
       if (!keycard || !identifier) continue;
 
-      // Get the latest task list from the persistence layer
-      const tasks = entry.tasks;
-      if (!tasks || tasks.length === 0) continue;
+      const persisted = await backgroundDb.loadTasks(keycard, identifier);
+      if (!persisted?.tasks?.length) continue;
 
-      for (const task of tasks) {
-        // If it was Running, reset it to Waiting so it can be re-executed
+      entry.tasks = persisted.tasks;
+
+      for (const task of entry.tasks) {
         if (task.status === 'Running') {
           task.status = 'Waiting';
         }
@@ -666,7 +752,7 @@ export class QueueManager {
         }
       }
 
-      this.updateTasks(keycard, identifier, tasks);
+      this.updateTasks(keycard, identifier, entry.tasks);
     }
     await this.persistState();
   }

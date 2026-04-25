@@ -1,6 +1,3 @@
-import { createTaskStore } from 'kernel-script';
+import { useTaskWorker } from '@/hooks/use-task-worker';
 
-export const useTestTaskStore = createTaskStore({
-  keycard: 'IMAGE_GEN',
-  identifier: 'FAKE_identifier',
-});
+export const useTestTaskStore = useTaskWorker;
