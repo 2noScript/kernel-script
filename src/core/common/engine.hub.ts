@@ -1,4 +1,4 @@
-import type { BaseEngine } from '@/core/types';
+import type { BaseEngine } from '@/core/common/types';
 
 export class EngineHub {
   private engines: Map<string, BaseEngine> = new Map();

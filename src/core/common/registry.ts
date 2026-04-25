@@ -1,4 +1,4 @@
-import type { BaseEngine } from '@/core/types';
+import type { BaseEngine } from '@/core/common/types';
 import type { QueueService } from '@/core/services/queue.service';
 
 export function registerEngines(engines: BaseEngine[], queueService: QueueService) {

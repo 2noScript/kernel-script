@@ -17,7 +17,7 @@ export type {
   EngineResult,
   BaseEngine,
   AsyncResult,
-} from '@/core/types';
+} from '@/core/common/types';
 export { useWorker, type WorkerMethods } from '@/core/hooks/use-worker';
-export { registerEngines, createEngineRegistry } from '@/core/registry';
-export { TaskContext } from '@/core/contexts/task.context';
+export { registerEngines, createEngineRegistry } from '@/core/common/registry';
+export { TaskContext } from '@/core/common/task.context';

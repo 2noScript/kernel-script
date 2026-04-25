@@ -1,8 +1,8 @@
 import PQueue from 'p-queue';
-import type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/types';
-import { engineHub } from '@/core/hubs/engine.hub';
-import { TaskContext } from '@/core/contexts/task.context';
-import { sleep } from '@/core/helper';
+import type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/common/types';
+import { engineHub } from '@/core/common/engine.hub';
+import { TaskContext } from '@/core/common/task.context';
+import { sleep } from '@/core/utils/helper';
 
 export interface QueueStatus {
   size: number;

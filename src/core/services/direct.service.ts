@@ -1,6 +1,6 @@
-import { engineHub } from '@/core/hubs/engine.hub';
-import { TaskContext } from '@/core/contexts/task.context';
-import type { Task, EngineResult } from '@/core/types';
+import { engineHub } from '@/core/common/engine.hub';
+import { TaskContext } from '@/core/common/task.context';
+import type { Task, EngineResult } from '@/core/common/types';
 
 export interface DirectCallbacks {
   onTaskUpdate?: (keycard: string, identifier: string, task: Task) => void;

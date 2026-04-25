@@ -1,4 +1,4 @@
-import { hasActiveUI } from '@/core/background/port-tracker';
+import { hasActiveUI } from '@/core/utils/port-tracker';
 
 export const EVENTS = {
   TASK_STARTED: 'TASK_STARTED',

@@ -1,5 +1,5 @@
 import { createStore as createIdbStore, get, set, del, keys } from 'idb-keyval';
-import type { Task, QueueStatus, TaskConfig } from '@/core/types';
+import type { Task, QueueStatus, TaskConfig } from '@/core/common/types';
 
 const DB_NAME = 'kernel-script';
 const TASKS_STORE = 'tasks';

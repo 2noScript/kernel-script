@@ -6,9 +6,9 @@ import type {
   TaskConfig,
   EngineResult,
   AsyncResult,
-} from '@/core/types';
+} from '@/core/common/types';
 import { type QueueStatus } from '@/core/services/queue.service';
-import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/commands';
+import { QUEUE_COMMAND, DIRECT_COMMAND } from '@/core/constants/commands';
 import type { SyncResponse } from '@/core/controllers/queue.controller';
 
 export interface WorkerConfig {

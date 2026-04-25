@@ -1,6 +1,6 @@
-import { QUEUE_COMMAND } from '@/core/commands';
+import { QUEUE_COMMAND } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
-import type { Task, TaskInput, TaskConfig } from '@/core/types';
+import type { Task, TaskInput, TaskConfig } from '@/core/common/types';
 
 export type CommandPayload = {
   command: string;

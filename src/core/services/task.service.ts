@@ -1,7 +1,7 @@
 import { taskRepository } from '@/core/repositories/task.repository';
 import { getQueueService } from '@/core/services/queue.service';
 import { directService } from '@/core/services/direct.service';
-import type { Task, TaskInput, QueueStatus } from '@/core/types';
+import type { Task, TaskInput, QueueStatus } from '@/core/common/types';
 
 export type TaskFilters = {
   status?: Task['status'][];

@@ -1,4 +1,4 @@
-import { DIRECT_COMMAND } from '@/core/commands';
+import { DIRECT_COMMAND } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
 import { directService } from '@/core/services/direct.service';
 

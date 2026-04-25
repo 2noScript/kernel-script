@@ -1,12 +1,12 @@
 import { getQueueService } from '@/core/services/queue.service';
 import { directService } from '@/core/services/direct.service';
 import { taskService } from '@/core/services/task.service';
-import { registerEngines, type EngineRegistry } from '@/core/registry';
-import { createHeartbeatHandler } from '@/core/background/heartbeat';
-import type { EngineResult, QueueStatus, Task } from '@/core/types';
+import { registerEngines, type EngineRegistry } from '@/core/common/registry';
+import { createHeartbeatHandler } from '@/core/utils/heartbeat';
+import type { EngineResult, QueueStatus, Task } from '@/core/common/types';
 import { createQueueController } from '@/core/controllers/queue.controller';
 import { createDirectController } from '@/core/controllers/direct.controller';
-import { onUIPortConnect } from '@/core/background/port-tracker';
+import { onUIPortConnect } from '@/core/utils/port-tracker';
 import { taskRepository } from '@/core/repositories/task.repository';
 import { emitEvent, EVENTS } from '@/core/events/emitter';
 
