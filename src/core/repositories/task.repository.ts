@@ -28,19 +28,19 @@ export interface QueueStatusDb {
   updatedAt: number;
 }
 
-function getProviderKey(keycard: string, identifier: string): string {
+function getStorageKey(keycard: string, identifier: string): string {
   return `${keycard}__${identifier}`;
 }
 
 export class TaskRepository {
   async saveTasks(keycard: string, identifier: string, tasks: Task[]): Promise<void> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     const data: PersistedTasks = { tasks, updatedAt: Date.now() };
     await set(key, data, tasksStore);
   }
 
   async getTasks(keycard: string, identifier: string): Promise<Task[]> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     const data = await get<PersistedTasks>(key, tasksStore);
     return data?.tasks ?? [];
   }
@@ -103,23 +103,23 @@ export class TaskRepository {
   }
 
   async clearTasks(keycard: string, identifier: string): Promise<void> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     await del(key, tasksStore);
   }
 
   async saveQueueStatus(keycard: string, identifier: string, status: QueueStatusDb): Promise<void> {
-    const key = `${getProviderKey(keycard, identifier)}__status`;
+    const key = `${getStorageKey(keycard, identifier)}__status`;
     await set(key, status, stateStore);
   }
 
   async getQueueStatus(keycard: string, identifier: string): Promise<QueueStatusDb | null> {
-    const key = `${getProviderKey(keycard, identifier)}__status`;
+    const key = `${getStorageKey(keycard, identifier)}__status`;
     const status = await get<QueueStatusDb>(key, stateStore);
     return status ?? null;
   }
 
   async clearQueueStatus(keycard: string, identifier: string): Promise<void> {
-    const key = `${getProviderKey(keycard, identifier)}__status`;
+    const key = `${getStorageKey(keycard, identifier)}__status`;
     await del(key, stateStore);
   }
 
@@ -128,18 +128,18 @@ export class TaskRepository {
     identifier: string,
     state: PersistedQueueState
   ): Promise<void> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     await set(key, state, stateStore);
   }
 
   async loadQueueState(keycard: string, identifier: string): Promise<PersistedQueueState | null> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     const state = await get<PersistedQueueState>(key, stateStore);
     return state ?? null;
   }
 
   async loadTasks(keycard: string, identifier: string): Promise<PersistedTasks | null> {
-    const key = getProviderKey(keycard, identifier);
+    const key = getStorageKey(keycard, identifier);
     const data = await get<PersistedTasks>(key, tasksStore);
     return data ?? null;
   }

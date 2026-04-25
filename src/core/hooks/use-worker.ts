@@ -175,9 +175,10 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
 
     const handleMessage = (message: any) => {
       if (message.type === 'WORKER_EVENT') {
-        const { event, keycard: pid, identifier: pjid, data } = message;
-        const isPlatformMatch = pid === keycard || pid === '*';
-        const isIdentifierMatch = (pjid || '') === (identifier || '') || pid === '*';
+        const { event, keycard: msgKeycard, identifier: msgIdentifier, data } = message;
+        const isPlatformMatch = msgKeycard === keycard || msgKeycard === '*';
+        const isIdentifierMatch =
+          (msgIdentifier || '') === (identifier || '') || msgKeycard === '*';
 
         if (!isPlatformMatch || !isIdentifierMatch) return;
 

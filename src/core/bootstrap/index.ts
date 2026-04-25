@@ -6,7 +6,8 @@ import { createHeartbeatHandler } from '@/core/utils/heartbeat';
 import type { EngineResult, QueueStatus, Task } from '@/core/common/types';
 import { createQueueController } from '@/core/controllers/queue.controller';
 import { createDirectController } from '@/core/controllers/direct.controller';
-import { onUIPortConnect } from '@/core/utils/port-tracker';
+import { onPortConnect } from '@/core/utils/port-tracker';
+import { hasActivePort } from '@/core/utils/port-tracker';
 import { taskRepository } from '@/core/repositories/task.repository';
 import { emitEvent, EVENTS } from '@/core/events/emitter';
 
@@ -30,7 +31,7 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
 
   registerEngines(engineRegistry.getEngines(), getQueueService());
 
-  onUIPortConnect((port) => {
+  onPortConnect((port) => {
     debugLog(`[BOOTSTRAP] UI port connected: ${port.sender?.url || 'unknown'}`);
   });
 

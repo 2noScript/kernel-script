@@ -1,4 +1,4 @@
-import { engineHub } from '@/core/common/engine.hub';
+import { engineHub } from '@/core/common/engine-hub';
 import { TaskContext } from '@/core/common/task.context';
 import type { Task, EngineResult } from '@/core/common/types';
 

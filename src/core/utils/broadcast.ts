@@ -1,4 +1,4 @@
-import { hasActiveUI } from './port-tracker';
+import { hasActivePort } from './port-tracker';
 
 export type SetupOptions = {
   debug?: boolean;
@@ -6,12 +6,10 @@ export type SetupOptions = {
 };
 
 export const broadcast = (message: any) => {
-  if (!hasActiveUI()) {
+  if (!hasActivePort()) {
     return;
   }
   chrome.runtime.sendMessage(message).catch(() => {
     // Ignore errors when no UI is open
   });
 };
-
-export const createBroadcast = () => broadcast;

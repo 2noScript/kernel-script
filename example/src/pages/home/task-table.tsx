@@ -94,7 +94,7 @@ export function TaskTable() {
   }, [worker.selectedIds]);
 
   const handleAddRow = useCallback(() => {
-    worker.add({
+    worker.createTask({
       name: `Task ${tasks.length + 1}`,
       payload: {
         model: 'config.model',
@@ -115,7 +115,7 @@ export function TaskTable() {
   }, [tasks.length, worker]);
 
   const handleDeleteSelected = useCallback(async () => {
-    await worker.delete(worker.selectedIds);
+    await worker.deleteTasks(worker.selectedIds);
     toast.success(`Deleted ${worker.selectedIds.length} task(s)`);
   }, [worker]);
 
@@ -126,7 +126,7 @@ export function TaskTable() {
     if (allSkipped) {
       toast.success(`Unflagged ${worker.selectedIds.length} task(s)`);
     } else {
-      await worker.skips(worker.selectedIds);
+      await worker.unpublishTasks(worker.selectedIds);
       toast.success(`Skipped ${worker.selectedIds.length} task(s)`);
     }
   }, [worker, tasks]);
@@ -138,9 +138,9 @@ export function TaskTable() {
   const handleStartOrStopTasks = useCallback(async () => {
     if (!worker.isRunning) {
       const waitingTasks = tasks.filter((t: Task) => t.status === 'Waiting');
-      if (waitingTasks.length > 0) await worker.start();
+      if (waitingTasks.length > 0) await worker.queueStart();
     } else {
-      await worker.stop();
+      await worker.queueStop();
     }
   }, [worker, tasks]);
 
@@ -148,7 +148,7 @@ export function TaskTable() {
     const draftTasks = tasks.filter(
       (t: Task) => t.status === 'Draft' && worker.selectedIds.includes(t.id)
     );
-    await worker.publish(draftTasks);
+    await worker.publishTasks(draftTasks.map((t) => t.id));
     worker.toggleSelectAll(worker.selectedIds);
 
     toast.success(`Published ${draftTasks.length} task(s)`);

@@ -1,4 +1,4 @@
-import { hasActiveUI } from '@/core/utils/port-tracker';
+import { hasActivePort } from '@/core/utils/port-tracker';
 
 export const EVENTS = {
   TASK_STARTED: 'TASK_STARTED',
@@ -67,7 +67,7 @@ interface BroadcastMessage {
 }
 
 const broadcast = (message: BroadcastMessage) => {
-  if (!hasActiveUI()) {
+  if (!hasActivePort()) {
     return;
   }
   chrome.runtime.sendMessage(message).catch(() => {});
@@ -126,8 +126,3 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
     });
   }
 };
-
-export const createEmitter = () => ({
-  emit: emitEvent,
-  EVENTS,
-});

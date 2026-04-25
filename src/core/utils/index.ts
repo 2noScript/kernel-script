@@ -1,4 +1,10 @@
-export { broadcast, createBroadcast } from './broadcast';
+export { broadcast } from './broadcast';
 export { createHeartbeatHandler } from './heartbeat';
-export { hasActiveUI, addActivePort, removeActivePort, getActiveUICount } from './port-tracker';
+export {
+  hasActivePort,
+  addPort,
+  removePort,
+  getActiveUICount,
+  onPortConnect,
+} from './port-tracker';
 export { sleep } from './helper';

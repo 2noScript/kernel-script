@@ -4,6 +4,6 @@ import { useWorker } from 'kernel-script';
 export function useTaskWorker() {
   return useWorker({
     engine: noopEngine,
-    identifier: 'FAKE_identifier',
+    identifier: 'default',
   });
 }
