@@ -189,6 +189,49 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
               setIsRunning(data.status.isRunning);
             }
             break;
+
+          case 'TASK_STARTED':
+            debugLog(`[HOOK] TASK_STARTED: ${data.taskId}`);
+            if (data.task) {
+              setTasks((prev) => {
+                const idx = prev.findIndex((t) => t.id === data.taskId);
+                if (idx !== -1) {
+                  const updated = [...prev];
+                  updated[idx] = { ...updated[idx], ...data.task };
+                  return updated;
+                }
+                return prev;
+              });
+              setIsRunning(true);
+            }
+            break;
+
+          case 'TASK_COMPLETED':
+            debugLog(`[HOOK] TASK_COMPLETED: ${data.taskId}`);
+            if (data.task) {
+              setTasks((prev) => {
+                const idx = prev.findIndex((t) => t.id === data.taskId);
+                if (idx !== -1) {
+                  const updated = [...prev];
+                  updated[idx] = { ...updated[idx], ...data.task };
+                  return updated;
+                }
+                return prev;
+              });
+            }
+            break;
+
+          case 'TASK_UPDATED':
+            debugLog(`[HOOK] TASK_UPDATED: ${data.taskId}`);
+            if (data.task) {
+              setTasks((prev) => prev.map((t) => (t.id === data.task.id ? data.task : t)));
+            }
+            break;
+
+          case 'QUEUE_EMPTY':
+            debugLog(`[HOOK] QUEUE_EMPTY`);
+            setIsRunning(false);
+            break;
         }
       }
     };
