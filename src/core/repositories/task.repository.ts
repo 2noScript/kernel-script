@@ -1,26 +1,15 @@
-import { createStore as createIdbStore, get, set, del, keys } from 'idb-keyval';
+import Dexie from 'dexie';
+import type { Table } from 'dexie';
 import type { Task, QueueStatus, TaskConfig } from '@/core/common/types';
 
-const DB_NAME = 'kernel-script';
-const TASKS_STORE = 'tasks';
-const STATE_STORE = 'state';
-
-const tasksStore = createIdbStore(DB_NAME, TASKS_STORE);
-const stateStore = createIdbStore(DB_NAME, STATE_STORE);
-
 export interface PersistedTasks {
+  key: string;
   tasks: Task[];
   updatedAt: number;
 }
 
-export interface PersistedQueueState {
-  isRunning: boolean;
-  status: QueueStatus;
-  selectedIds: string[];
-  taskConfig: TaskConfig;
-}
-
 export interface QueueStatusDb {
+  key: string;
   size: number;
   pending: number;
   isRunning: boolean;
@@ -28,21 +17,45 @@ export interface QueueStatusDb {
   updatedAt: number;
 }
 
-function getStorageKey(keycard: string, identifier: string): string {
-  return `${keycard}__${identifier}`;
+export interface PersistedQueueState {
+  key: string;
+  isRunning: boolean;
+  status: QueueStatus;
+  selectedIds: string[];
+  taskConfig: TaskConfig;
 }
 
+export class KernelScriptDB extends Dexie {
+  tasks!: Table<PersistedTasks, string>;
+  status!: Table<QueueStatusDb, string>;
+  state!: Table<PersistedQueueState, string>;
+
+  constructor() {
+    super('kernel-script');
+    this.version(1).stores({
+      tasks: 'key',
+      status: 'key',
+      state: 'key',
+    });
+  }
+}
+
+export const db = new KernelScriptDB();
+
 export class TaskRepository {
+  private getKey(keycard: string, identifier: string): string {
+    return `${keycard}__${identifier}`;
+  }
+
   async saveTasks(keycard: string, identifier: string, tasks: Task[]): Promise<void> {
-    const key = getStorageKey(keycard, identifier);
-    const data: PersistedTasks = { tasks, updatedAt: Date.now() };
-    await set(key, data, tasksStore);
+    const key = this.getKey(keycard, identifier);
+    await db.tasks.put({ key, tasks, updatedAt: Date.now() });
   }
 
   async getTasks(keycard: string, identifier: string): Promise<Task[]> {
-    const key = getStorageKey(keycard, identifier);
-    const data = await get<PersistedTasks>(key, tasksStore);
-    return data?.tasks ?? [];
+    const key = this.getKey(keycard, identifier);
+    const record = await db.tasks.get(key);
+    return record?.tasks ?? [];
   }
 
   async getTask(keycard: string, identifier: string, taskId: string): Promise<Task | null> {
@@ -103,55 +116,81 @@ export class TaskRepository {
   }
 
   async clearTasks(keycard: string, identifier: string): Promise<void> {
-    const key = getStorageKey(keycard, identifier);
-    await del(key, tasksStore);
+    const key = this.getKey(keycard, identifier);
+    await db.tasks.delete(key);
   }
 
-  async saveQueueStatus(keycard: string, identifier: string, status: QueueStatusDb): Promise<void> {
-    const key = `${getStorageKey(keycard, identifier)}__status`;
-    await set(key, status, stateStore);
+  async saveQueueStatus(
+    keycard: string,
+    identifier: string,
+    status: Omit<QueueStatusDb, 'key'>
+  ): Promise<void> {
+    const key = this.getKey(keycard, identifier);
+    await db.status.put({
+      key,
+      size: status.size,
+      pending: status.pending,
+      isRunning: status.isRunning,
+      isPaused: status.isPaused,
+      updatedAt: Date.now(),
+    });
   }
 
-  async getQueueStatus(keycard: string, identifier: string): Promise<QueueStatusDb | null> {
-    const key = `${getStorageKey(keycard, identifier)}__status`;
-    const status = await get<QueueStatusDb>(key, stateStore);
-    return status ?? null;
+  async getQueueStatus(
+    keycard: string,
+    identifier: string
+  ): Promise<Omit<QueueStatusDb, 'key'> | null> {
+    const key = this.getKey(keycard, identifier);
+    const record = await db.status.get(key);
+    return record
+      ? {
+          size: record.size,
+          pending: record.pending,
+          isRunning: record.isRunning,
+          isPaused: record.isPaused,
+          updatedAt: record.updatedAt,
+        }
+      : null;
   }
 
   async clearQueueStatus(keycard: string, identifier: string): Promise<void> {
-    const key = `${getStorageKey(keycard, identifier)}__status`;
-    await del(key, stateStore);
+    const key = this.getKey(keycard, identifier);
+    await db.status.delete(key);
   }
 
   async saveQueueState(
     keycard: string,
     identifier: string,
-    state: PersistedQueueState
+    state: Omit<PersistedQueueState, 'key'>
   ): Promise<void> {
-    const key = getStorageKey(keycard, identifier);
-    await set(key, state, stateStore);
+    const key = this.getKey(keycard, identifier);
+    await db.state.put({
+      key,
+      isRunning: state.isRunning,
+      status: state.status,
+      selectedIds: state.selectedIds,
+      taskConfig: state.taskConfig,
+    });
   }
 
   async loadQueueState(keycard: string, identifier: string): Promise<PersistedQueueState | null> {
-    const key = getStorageKey(keycard, identifier);
-    const state = await get<PersistedQueueState>(key, stateStore);
-    return state ?? null;
+    const key = this.getKey(keycard, identifier);
+    const record = await db.state.get(key);
+    return record ?? null;
   }
 
   async loadTasks(keycard: string, identifier: string): Promise<PersistedTasks | null> {
-    const key = getStorageKey(keycard, identifier);
-    const data = await get<PersistedTasks>(key, tasksStore);
-    return data ?? null;
+    const key = this.getKey(keycard, identifier);
+    return (await db.tasks.get(key)) ?? null;
   }
 
   async loadAllTasks(): Promise<Map<string, PersistedTasks>> {
-    const allKeys = await keys<string>(tasksStore);
     const result = new Map<string, PersistedTasks>();
+    const all = await db.tasks.toArray();
 
-    for (const key of allKeys) {
-      const data = await get<PersistedTasks>(key, tasksStore);
-      if (data) {
-        result.set(key, data);
+    for (const record of all) {
+      if (record.key.includes('__')) {
+        result.set(record.key, record);
       }
     }
 
@@ -159,13 +198,12 @@ export class TaskRepository {
   }
 
   async loadAllQueueStates(): Promise<Map<string, PersistedQueueState>> {
-    const allKeys = await keys<string>(stateStore);
     const result = new Map<string, PersistedQueueState>();
+    const all = await db.state.toArray();
 
-    for (const key of allKeys) {
-      const state = await get<PersistedQueueState>(key, stateStore);
-      if (state) {
-        result.set(key, state);
+    for (const record of all) {
+      if (record.key.includes('__')) {
+        result.set(record.key, record);
       }
     }
 

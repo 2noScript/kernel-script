@@ -1,5 +1,6 @@
 import { QUEUE_COMMAND } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
+import { getQueueService } from '@/core/services/queue.service';
 import type { Task, TaskInput, TaskConfig } from '@/core/common/types';
 
 export type CommandPayload = {
@@ -36,9 +37,7 @@ export const createQueueController = (debugLog: (...args: unknown[]) => void) =>
         const tasks = await taskService.getTasks(keycard, identifier);
         const status = await taskService.getQueueStatus(keycard, identifier);
         const selectedIds = taskService.getSelectedIds(keycard, identifier);
-        const queueService = await import('@/core/services/queue.service').then((m) =>
-          m.getQueueService()
-        );
+        const queueService = getQueueService();
         const taskConfig = queueService.getTaskConfig(keycard, identifier);
 
         return {
