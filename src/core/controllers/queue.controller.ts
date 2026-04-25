@@ -147,6 +147,12 @@ export const createQueueController = (debugLog: (...args: unknown[]) => void) =>
         return { success: true };
       }
 
+      case QUEUE_COMMAND.RESET_TASKS: {
+        debugLog(`[CONTROLLER] RESET_TASKS ${payload.taskIds?.length} in ${keycard}/${identifier}`);
+        const tasks = await taskService.resetTasks(keycard, identifier, payload.taskIds || []);
+        return { tasks };
+      }
+
       default:
         debugLog(`[CONTROLLER] Unknown command: ${command}`);
         return null;

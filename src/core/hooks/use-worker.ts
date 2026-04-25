@@ -29,6 +29,7 @@ export interface UseWorkerReturn {
   deleteTasks: (taskIds: string[]) => Promise<AsyncResult>;
   publishTasks: (taskIds: string[]) => Promise<AsyncResult>;
   unpublishTasks: (taskIds: string[]) => Promise<AsyncResult>;
+  resetTasks: (taskIds: string[]) => Promise<AsyncResult>;
   queueStart: () => Promise<AsyncResult>;
   queueStop: () => Promise<AsyncResult>;
   queueCancelTask: (taskId: string) => Promise<AsyncResult>;
@@ -326,6 +327,17 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] UNPUBLISH_TASKS ${taskIds.length}`);
       const result = await sendQueueCommand(QUEUE_COMMAND.UNPUBLISH_TASKS, { taskIds });
+      syncFromBackground();
+      return result ?? { success: true };
+    },
+    [sendQueueCommand, syncFromBackground, debugLog]
+  );
+
+  const resetTasks = useCallback(
+    async (taskIds: string[]) => {
+      if (taskIds.length === 0) return { success: true };
+      debugLog(`[HOOK] RESET_TASKS ${taskIds.length}`);
+      const result = await sendQueueCommand(QUEUE_COMMAND.RESET_TASKS, { taskIds });
       syncFromBackground();
       return result ?? { success: true };
     },

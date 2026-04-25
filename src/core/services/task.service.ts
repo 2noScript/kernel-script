@@ -165,6 +165,29 @@ export class TaskService {
     return updatedTasks;
   }
 
+  async resetTasks(keycard: string, identifier: string, taskIds: string[]): Promise<Task[]> {
+    const tasks = await taskRepository.getTasks(keycard, identifier);
+    const idSet = new Set(taskIds);
+    const updatedTasks: Task[] = [];
+
+    for (const task of tasks) {
+      if (idSet.has(task.id) && ['Completed', 'Error', 'Skipped'].includes(task.status)) {
+        task.status = 'Draft';
+        task.isQueued = false;
+        task.progress = 0;
+        task.errorMessage = undefined;
+        task.updateAt = Date.now();
+        updatedTasks.push(task);
+      }
+    }
+
+    if (updatedTasks.length > 0) {
+      await taskRepository.saveTasks(keycard, identifier, tasks);
+    }
+
+    return updatedTasks;
+  }
+
   async runTask(keycard: string, identifier: string, taskId: string): Promise<Task | null> {
     const task = await taskRepository.getTask(keycard, identifier, taskId);
     if (!task) return null;
