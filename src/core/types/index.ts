@@ -51,8 +51,6 @@ export type QueueOptions = {
     result: EngineResult
   ) => void;
   onQueueEmpty?: (keycard: string, identifier: string) => void;
-  onPendingCountChange?: (keycard: string, identifier: string, count: number) => void;
-  onTasksUpdate?: (keycard: string, identifier: string, tasks: Task[], status: QueueStatus) => void;
 };
 
 export type EngineResult = {
