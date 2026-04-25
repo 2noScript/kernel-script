@@ -28,6 +28,10 @@ export class EngineHub {
   getKeys(): string[] {
     return Array.from(this.engines.keys());
   }
+
+  unregister(keycard: string): void {
+    this.engines.delete(keycard);
+  }
 }
 
 export const engineHub = new EngineHub();

@@ -137,6 +137,7 @@ export class QueueService {
 
   async add(keycard: string, identifier: string, task: Task): Promise<void> {
     const key = this.getQueueKey(keycard, identifier);
+    this.getOrCreateQueue(keycard, identifier);
     const tasks = this.tasksMap.get(key) || [];
     const exists = tasks.find((t) => t.id === task.id);
 
@@ -288,13 +289,13 @@ export class QueueService {
     return {
       size,
       pending,
-      isRunning: !entry?.queue.isPaused || this.runningQueues.has(key),
+      isRunning: entry ? entry.queue.isPaused === false && this.runningQueues.has(key) : false,
     };
   }
 
   updateTaskConfig(keycard: string, identifier: string, taskConfig: TaskConfig): void {
     const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
+    const entry = this.getOrCreateQueue(keycard, identifier);
     if (entry) {
       entry.taskConfig = taskConfig;
       entry.queue.concurrency = taskConfig.threads;

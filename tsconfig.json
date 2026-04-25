@@ -5,7 +5,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["chrome"],
+    "types": ["chrome","bun"],
     // Environment setup & latest features
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",
