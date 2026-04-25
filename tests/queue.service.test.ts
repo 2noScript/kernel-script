@@ -233,4 +233,211 @@ describe('QueueService', () => {
       expect(onTaskStartCalled).toBe(true);
     });
   });
+
+  describe('pause', () => {
+    it('should pause queue without clearing tasks', async () => {
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.start(KEYCARD, IDENTIFIER);
+
+      await queueService.pause(KEYCARD, IDENTIFIER);
+
+      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      expect(status.isRunning).toBe(false);
+
+      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      expect(tasks).toHaveLength(1);
+    });
+
+    it('should resume paused queue', async () => {
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.start(KEYCARD, IDENTIFIER);
+
+      await queueService.pause(KEYCARD, IDENTIFIER);
+      await queueService.resume(KEYCARD, IDENTIFIER);
+
+      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      expect(status.isRunning).toBe(true);
+    });
+  });
+
+  describe('clear', () => {
+    it('should clear all tasks from queue', async () => {
+      const task1 = createMockTask({ id: 'task-1', status: 'Waiting' });
+      const task2 = createMockTask({ id: 'task-2', status: 'Waiting' });
+      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
+
+      await queueService.clear(KEYCARD, IDENTIFIER);
+
+      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      expect(tasks).toHaveLength(0);
+    });
+  });
+
+  describe('retryTasks', () => {
+    it('should retry error tasks', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Error', errorMessage: 'Failed' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+
+      await queueService.retryTasks(KEYCARD, IDENTIFIER, ['task-1']);
+
+      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      expect(tasks[0].status).toBe('Waiting');
+      expect(tasks[0].errorMessage).toBeUndefined();
+    });
+
+    it('should return empty array when no error tasks', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Completed' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+
+      const result = await queueService.retryTasks(KEYCARD, IDENTIFIER);
+
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('setConcurrency', () => {
+    it('should set concurrency for new keycard', () => {
+      queueService.updateTaskConfig('new-keycard', IDENTIFIER, {
+        threads: 1,
+        delayMin: 0,
+        delayMax: 0,
+        stopOnErrorCount: 0,
+      });
+
+      queueService.setConcurrency('new-keycard', 5);
+
+      const config = queueService.getTaskConfig('new-keycard', IDENTIFIER);
+      expect(config.threads).toBe(5);
+    });
+
+    it('should update existing keycard concurrency', () => {
+      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+        threads: 1,
+        delayMin: 0,
+        delayMax: 0,
+        stopOnErrorCount: 0,
+      });
+
+      queueService.setConcurrency(KEYCARD, 3);
+
+      const config = queueService.getTaskConfig(KEYCARD, IDENTIFIER);
+      expect(config.threads).toBe(3);
+    });
+  });
+
+  describe('getTaskConfig', () => {
+    it('should return default config for new queue', () => {
+      const config = queueService.getTaskConfig('new-platform', 'new-identifier');
+
+      expect(config.threads).toBe(1);
+      expect(config.delayMin).toBe(1);
+      expect(config.delayMax).toBe(15);
+      expect(config.stopOnErrorCount).toBe(0);
+    });
+
+    it('should return stored config after update', () => {
+      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+        threads: 4,
+        delayMin: 5,
+        delayMax: 20,
+        stopOnErrorCount: 10,
+      });
+
+      const config = queueService.getTaskConfig(KEYCARD, IDENTIFIER);
+      expect(config.threads).toBe(4);
+      expect(config.delayMin).toBe(5);
+      expect(config.delayMax).toBe(20);
+      expect(config.stopOnErrorCount).toBe(10);
+    });
+  });
+
+  describe('toggleSelectAll', () => {
+    it('should select all tasks', async () => {
+      const task1 = createMockTask({ id: 'task-1' });
+      const task2 = createMockTask({ id: 'task-2' });
+      const task3 = createMockTask({ id: 'task-3' });
+      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2, task3]);
+
+      const selected = queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
+
+      expect(selected).toHaveLength(3);
+      expect(selected).toContain('task-1');
+      expect(selected).toContain('task-2');
+      expect(selected).toContain('task-3');
+    });
+
+    it('should deselect all tasks when all selected', async () => {
+      const task1 = createMockTask({ id: 'task-1' });
+      const task2 = createMockTask({ id: 'task-2' });
+      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
+
+      queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
+      const selected = queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
+
+      expect(selected).toHaveLength(0);
+    });
+  });
+
+  describe('clearSelected', () => {
+    it('should clear all selected ids', async () => {
+      const task1 = createMockTask({ id: 'task-1' });
+      const task2 = createMockTask({ id: 'task-2' });
+      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
+
+      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-1');
+      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-2');
+      queueService.clearSelected(KEYCARD, IDENTIFIER);
+
+      const selected = queueService.getSelectedIds(KEYCARD, IDENTIFIER);
+      expect(selected).toHaveLength(0);
+    });
+  });
+
+  describe('callbacks > onTaskComplete', () => {
+    it('should call onTaskComplete when task completes', async () => {
+      const engine = createMockEngine({ success: true }, KEYCARD);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+        threads: 1,
+        delayMin: 0,
+        delayMax: 0,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.start(KEYCARD, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(onTaskCompleteCalled).toBe(true);
+      expect(lastResult?.success).toBe(true);
+    });
+  });
+
+  describe('callbacks > onQueueEmpty', () => {
+    it('should call onQueueEmpty when queue becomes empty', async () => {
+      const engine = createMockEngine({ success: true }, KEYCARD);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+        threads: 1,
+        delayMin: 0,
+        delayMax: 0,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.start(KEYCARD, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      expect(onQueueEmptyCalled).toBe(true);
+      expect(lastIdentifier).toBe(IDENTIFIER);
+    });
+  });
 });

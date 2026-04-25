@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { DirectService, type DirectCallbacks } from '@/core/services/direct.service';
+import { engineHub } from '@/core/common/engine.hub';
 import { createMockTask, createMockEngine } from './setup';
 
 const KEYCARD = 'test-keycard';
@@ -31,6 +32,10 @@ describe('DirectService', () => {
     onTaskCompleteCalled = false;
     lastTaskUpdate = null;
     lastCompleteResult = null;
+  });
+
+  afterEach(() => {
+    engineHub.unregister(KEYCARD);
   });
 
   describe('execute', () => {
@@ -100,6 +105,41 @@ describe('DirectService', () => {
       newService.registerCallbacks({});
 
       // No error = success
+    });
+  });
+
+  describe('execute with engine', () => {
+    it('should execute task successfully with registered engine', async () => {
+      const engine = createMockEngine({ success: true, output: { data: 'result' } }, KEYCARD);
+      engineHub.register(engine);
+
+      const task = createMockTask({ status: 'Draft' });
+      const result = await directService.execute(KEYCARD, IDENTIFIER, task);
+
+      expect(result.success).toBe(true);
+      expect(result.output).toEqual({ data: 'result' });
+    });
+
+    it('should return error when engine execution fails', async () => {
+      const engine = createMockEngine({ success: false, error: 'Execution failed' }, KEYCARD);
+      engineHub.register(engine);
+
+      const task = createMockTask({ status: 'Draft' });
+      const result = await directService.execute(KEYCARD, IDENTIFIER, task);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Execution failed');
+    });
+
+    it('should call onTaskComplete callback after execution', async () => {
+      const engine = createMockEngine({ success: true }, KEYCARD);
+      engineHub.register(engine);
+
+      const task = createMockTask({ status: 'Draft' });
+      await directService.execute(KEYCARD, IDENTIFIER, task);
+
+      expect(onTaskCompleteCalled).toBe(true);
+      expect(lastCompleteResult?.success).toBe(true);
     });
   });
 });

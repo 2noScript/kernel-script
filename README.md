@@ -53,7 +53,7 @@ bun add kernel-script
 ```
 
 ```typescript
-import { bootstrap, createEngineRegistry, useWorker, createTaskStore } from 'kernel-script';
+import { bootstrap, createEngineRegistry, useWorker } from 'kernel-script';
 
 const registry = createEngineRegistry();
 registry.register({
@@ -63,13 +63,10 @@ registry.register({
 
 bootstrap(registry, { debug: true });
 
-const taskStore = createTaskStore({ name: 'my-tasks' });
-
 function TaskQueue() {
   const { start, pause, publishTasks } = useWorker({
-    keycard: 'my-platform',
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
     identifier: 'default',
-    funcs: taskStore,
   });
   // ...
 }
@@ -224,9 +221,7 @@ bootstrap(registry, { debug: true });
 ### React Hook
 
 ```typescript
-import { useWorker, createTaskStore, type Task } from 'kernel-script';
-
-const taskStore = createTaskStore({ name: 'my-tasks' });
+import { useWorker, type Task } from 'kernel-script';
 
 function TaskQueue() {
   const {
@@ -240,9 +235,8 @@ function TaskQueue() {
     cancelTasks,
     skipTaskIds,
   } = useWorker({
-    keycard: 'my-platform',
+    engine: { keycard: 'my-platform', execute: async (ctx) => ({ success: true }) },
     identifier: 'default',
-    funcs: taskStore,
   });
 
   const handleAddTasks = (tasks: Task[]) => {
@@ -250,20 +244,6 @@ function TaskQueue() {
   };
   // ...
 }
-```
-
-### Store with Persistence
-
-```typescript
-import { createTaskStore } from 'kernel-script';
-
-const store = createTaskStore({
-  name: 'my-tasks',
-  partialize: (state) => ({
-    tasks: state.tasks,
-    config: state.config,
-  }),
-});
 ```
 
 ## API Reference
@@ -356,13 +336,7 @@ const store = createTaskStore({
 
 | Hook                | Description                     | Usage                                       |
 | ------------------- | ------------------------------- | ------------------------------------------- |
-| `useWorker(config)` | React hook for queue operations | `useWorker({ keycard, identifier, funcs })` |
-
-### Store
-
-| Function        | Description            |
-| --------------- | ---------------------- |
-| `createStore()` | Create store for tasks |
+| `useWorker(config)` | React hook for queue operations | `useWorker({ engine, identifier, debug? })` |
 
 ### Bootstrap & Setup
 

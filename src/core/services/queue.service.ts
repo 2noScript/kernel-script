@@ -117,6 +117,7 @@ export class QueueService {
     for (const [key, entry] of this.queues.entries()) {
       if (key.startsWith(keycard)) {
         entry.queue.concurrency = concurrency;
+        entry.taskConfig.threads = concurrency;
       }
     }
   }
@@ -195,6 +196,16 @@ export class QueueService {
     this.debugLog(`[Queue] START`);
   }
 
+  async pause(keycard: string, identifier: string): Promise<void> {
+    const key = this.getQueueKey(keycard, identifier);
+    const entry = this.queues.get(key);
+    if (!entry) return;
+
+    entry.queue.pause();
+    this.runningQueues.delete(key);
+    this.debugLog(`[Queue] PAUSE`);
+  }
+
   async stop(keycard: string, identifier: string): Promise<void> {
     const key = this.getQueueKey(keycard, identifier);
     const entry = this.queues.get(key);
@@ -224,6 +235,7 @@ export class QueueService {
     const entry = this.queues.get(key);
     if (entry) {
       entry.queue.start();
+      this.runningQueues.add(key);
       this.debugLog(`[Queue] RESUME`);
     }
   }
@@ -276,6 +288,29 @@ export class QueueService {
     const filtered = tasks.filter((t) => t.id !== taskId);
     this.tasksMap.set(key, filtered);
     this.debugLog(`[Queue] CANCEL_TASK ${taskId}`);
+  }
+
+  async retryTasks(keycard: string, identifier: string, taskIds?: string[]): Promise<string[]> {
+    const key = this.getQueueKey(keycard, identifier);
+    const tasks = this.tasksMap.get(key) || [];
+
+    let tasksToRetry = tasks;
+    if (taskIds && taskIds.length > 0) {
+      const idSet = new Set(taskIds);
+      tasksToRetry = tasks.filter((t) => idSet.has(t.id) && t.status === 'Error');
+    } else {
+      tasksToRetry = tasks.filter((t) => t.status === 'Error');
+    }
+
+    for (const task of tasksToRetry) {
+      task.status = 'Waiting';
+      task.errorMessage = undefined;
+      task.progress = 0;
+    }
+
+    this.tasksMap.set(key, tasks);
+    this.debugLog(`[Queue] RETRY_TASKS ${tasksToRetry.length} tasks`);
+    return tasksToRetry.map((t) => t.id);
   }
 
   getStatus(keycard: string, identifier: string): QueueStatus {
