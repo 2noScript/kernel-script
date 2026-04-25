@@ -35,9 +35,9 @@ export interface UseWorkerReturn {
   queueClear: () => Promise<AsyncResult>;
   retryTask: (taskId: string) => Promise<AsyncResult>;
   skipTask: (taskId: string) => Promise<AsyncResult>;
-  toggleSelect: (taskId: string) => Promise<void>;
-  toggleSelectAll: (taskIds?: string[]) => Promise<void>;
-  clearSelected: () => Promise<void>;
+  toggleSelect: (taskId: string) => void;
+  toggleSelectAll: (taskIds?: string[]) => void;
+  clearSelected: () => void;
   runTask: (taskId: string) => Promise<EngineResult>;
   stopTask: (taskId: string) => Promise<AsyncResult>;
   sync: () => void;
@@ -118,9 +118,6 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
           }
           if (response.status) {
             setIsRunning(response.status.isRunning);
-          }
-          if (response.selectedIds) {
-            setSelectedIds(response.selectedIds);
           }
           if (response.taskConfig) {
             setTaskConfigState(response.taskConfig);
@@ -332,32 +329,38 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
   );
 
   const toggleSelect = useCallback(
-    async (taskId: string) => {
+    (taskId: string) => {
       debugLog(`[HOOK] TOGGLE_SELECT ${taskId}`);
-      const response = await sendQueueCommand(QUEUE_COMMAND.TOGGLE_SELECT, { taskId });
-      if (response?.selectedIds) {
-        setSelectedIds(response.selectedIds);
-      }
+      setSelectedIds((prev) => {
+        if (prev.includes(taskId)) {
+          return prev.filter((id) => id !== taskId);
+        }
+        return [...prev, taskId];
+      });
     },
-    [sendQueueCommand]
+    [debugLog]
   );
 
   const toggleSelectAll = useCallback(
-    async (taskIds?: string[]) => {
+    (taskIds?: string[]) => {
       debugLog(`[HOOK] TOGGLE_SELECT_ALL`);
-      const response = await sendQueueCommand(QUEUE_COMMAND.TOGGLE_SELECT_ALL, { taskIds });
-      if (response?.selectedIds) {
-        setSelectedIds(response.selectedIds);
-      }
+      setSelectedIds((prev) => {
+        const targetIds = taskIds || [];
+        const allSelected = targetIds.every((id) => prev.includes(id));
+        if (allSelected) {
+          return prev.filter((id) => !targetIds.includes(id));
+        }
+        const newSelected = new Set([...prev, ...targetIds]);
+        return Array.from(newSelected);
+      });
     },
-    [sendQueueCommand]
+    [debugLog]
   );
 
-  const clearSelected = useCallback(async () => {
+  const clearSelected = useCallback(() => {
     debugLog(`[HOOK] CLEAR_SELECTED`);
-    await sendQueueCommand(QUEUE_COMMAND.CLEAR_SELECTED);
     setSelectedIds([]);
-  }, [sendQueueCommand]);
+  }, [debugLog]);
 
   const runTask = useCallback(
     async (taskId: string) => {

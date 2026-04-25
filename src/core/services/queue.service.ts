@@ -32,7 +32,6 @@ interface QueueEntry {
   queuedIds: Set<string>;
   consecutiveErrors: number;
   taskConfig: TaskConfig;
-  selectedIds: string[];
 }
 
 export class QueueService {
@@ -91,7 +90,6 @@ export class QueueService {
           delayMax: 15,
           stopOnErrorCount: 0,
         },
-        selectedIds: [],
       };
 
       queue.on('idle', () => {
@@ -349,55 +347,6 @@ export class QueueService {
         stopOnErrorCount: 0,
       }
     );
-  }
-
-  toggleSelect(keycard: string, identifier: string, taskId: string): string[] {
-    const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
-    if (!entry) return [];
-
-    const idx = entry.selectedIds.indexOf(taskId);
-    if (idx === -1) {
-      entry.selectedIds.push(taskId);
-    } else {
-      entry.selectedIds.splice(idx, 1);
-    }
-
-    return entry.selectedIds;
-  }
-
-  toggleSelectAll(keycard: string, identifier: string, taskIds?: string[]): string[] {
-    const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
-    if (!entry) return [];
-
-    const tasks = this.tasksMap.get(key) || [];
-    const targetIds = taskIds || tasks.map((t) => t.id);
-    const allSelected = targetIds.every((id) => entry.selectedIds.includes(id));
-
-    if (allSelected) {
-      entry.selectedIds = entry.selectedIds.filter((id) => !targetIds.includes(id));
-    } else {
-      const newSelected = new Set([...entry.selectedIds, ...targetIds]);
-      entry.selectedIds = Array.from(newSelected);
-    }
-
-    return entry.selectedIds;
-  }
-
-  clearSelected(keycard: string, identifier: string): string[] {
-    const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
-    if (entry) {
-      entry.selectedIds = [];
-    }
-    return [];
-  }
-
-  getSelectedIds(keycard: string, identifier: string): string[] {
-    const key = this.getQueueKey(keycard, identifier);
-    const entry = this.queues.get(key);
-    return entry?.selectedIds || [];
   }
 
   private async processTask(keycard: string, identifier: string, task: Task): Promise<void> {

@@ -275,26 +275,6 @@ export class TaskService {
     });
   }
 
-  toggleSelect(keycard: string, identifier: string, taskId: string): string[] {
-    const queueService = getQueueService();
-    return queueService.toggleSelect(keycard, identifier, taskId);
-  }
-
-  toggleSelectAll(keycard: string, identifier: string, taskIds?: string[]): string[] {
-    const queueService = getQueueService();
-    return queueService.toggleSelectAll(keycard, identifier, taskIds);
-  }
-
-  getSelectedIds(keycard: string, identifier: string): string[] {
-    const queueService = getQueueService();
-    return queueService.getSelectedIds(keycard, identifier);
-  }
-
-  clearSelected(keycard: string, identifier: string): string[] {
-    const queueService = getQueueService();
-    return queueService.clearSelected(keycard, identifier);
-  }
-
   async hydrateAndSync(keycard: string, identifier: string): Promise<void> {
     const queueService = getQueueService();
     const tasks = await taskRepository.getTasks(keycard, identifier);

@@ -23,7 +23,6 @@ export interface SyncResponse {
     pending: number;
     isRunning: boolean;
   };
-  selectedIds: string[];
   taskConfig: TaskConfig;
 }
 
@@ -36,14 +35,12 @@ export const createQueueController = (debugLog: (...args: unknown[]) => void) =>
         debugLog(`[CONTROLLER] SYNC from ${keycard}/${identifier}`);
         const tasks = await taskService.getTasks(keycard, identifier);
         const status = await taskService.getQueueStatus(keycard, identifier);
-        const selectedIds = taskService.getSelectedIds(keycard, identifier);
         const queueService = getQueueService();
         const taskConfig = queueService.getTaskConfig(keycard, identifier);
 
         return {
           tasks,
           status: status ?? { size: 0, pending: 0, isRunning: false },
-          selectedIds,
           taskConfig,
         } as SyncResponse;
       }
@@ -148,24 +145,6 @@ export const createQueueController = (debugLog: (...args: unknown[]) => void) =>
         debugLog(`[CONTROLLER] SET_TASK_CONFIG ${keycard}/${identifier}`);
         await taskService.updateTaskConfig(keycard, identifier, payload.taskConfig!);
         return { success: true };
-      }
-
-      case QUEUE_COMMAND.TOGGLE_SELECT: {
-        debugLog(`[CONTROLLER] TOGGLE_SELECT ${payload.taskId} from ${keycard}/${identifier}`);
-        const selectedIds = taskService.toggleSelect(keycard, identifier, payload.taskId || '');
-        return { selectedIds };
-      }
-
-      case QUEUE_COMMAND.TOGGLE_SELECT_ALL: {
-        debugLog(`[CONTROLLER] TOGGLE_SELECT_ALL from ${keycard}/${identifier}`);
-        const selectedIds = taskService.toggleSelectAll(keycard, identifier, payload.taskIds);
-        return { selectedIds };
-      }
-
-      case QUEUE_COMMAND.CLEAR_SELECTED: {
-        debugLog(`[CONTROLLER] CLEAR_SELECTED from ${keycard}/${identifier}`);
-        taskService.clearSelected(keycard, identifier);
-        return { selectedIds: [] };
       }
 
       default:

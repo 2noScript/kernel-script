@@ -143,33 +143,6 @@ describe('QueueService', () => {
     });
   });
 
-  describe('toggleSelect', () => {
-    it('should toggle task selection', async () => {
-      const task = createMockTask({ id: 'task-1' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-
-      const selected = queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-1');
-      expect(selected).toContain('task-1');
-
-      const selected2 = queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-1');
-      expect(selected2).not.toContain('task-1');
-    });
-  });
-
-  describe('getSelectedIds', () => {
-    it('should return selected ids', async () => {
-      const task1 = createMockTask({ id: 'task-1' });
-      const task2 = createMockTask({ id: 'task-2' });
-      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
-
-      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-1');
-      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-2');
-
-      const selected = queueService.getSelectedIds(KEYCARD, IDENTIFIER);
-      expect(selected).toHaveLength(2);
-    });
-  });
-
   describe('updateTaskConfig', () => {
     it('should update task config', () => {
       queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
@@ -352,47 +325,6 @@ describe('QueueService', () => {
       expect(config.stopOnErrorCount).toBe(10);
     });
   });
-
-  describe('toggleSelectAll', () => {
-    it('should select all tasks', async () => {
-      const task1 = createMockTask({ id: 'task-1' });
-      const task2 = createMockTask({ id: 'task-2' });
-      const task3 = createMockTask({ id: 'task-3' });
-      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2, task3]);
-
-      const selected = queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
-
-      expect(selected).toHaveLength(3);
-      expect(selected).toContain('task-1');
-      expect(selected).toContain('task-2');
-      expect(selected).toContain('task-3');
-    });
-
-    it('should deselect all tasks when all selected', async () => {
-      const task1 = createMockTask({ id: 'task-1' });
-      const task2 = createMockTask({ id: 'task-2' });
-      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
-
-      queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
-      const selected = queueService.toggleSelectAll(KEYCARD, IDENTIFIER);
-
-      expect(selected).toHaveLength(0);
-    });
-  });
-
-  describe('clearSelected', () => {
-    it('should clear all selected ids', async () => {
-      const task1 = createMockTask({ id: 'task-1' });
-      const task2 = createMockTask({ id: 'task-2' });
-      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
-
-      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-1');
-      queueService.toggleSelect(KEYCARD, IDENTIFIER, 'task-2');
-      queueService.clearSelected(KEYCARD, IDENTIFIER);
-
-      const selected = queueService.getSelectedIds(KEYCARD, IDENTIFIER);
-      expect(selected).toHaveLength(0);
-    });
   });
 
   describe('callbacks > onTaskComplete', () => {
