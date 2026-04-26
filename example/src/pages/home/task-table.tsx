@@ -329,8 +329,8 @@ export function TaskTable() {
                 </div>
               )}
             </Badge>
-            {row.original.delayUntil && row.original.delayUntil > Date.now() && (
-              <DelayCountdown delayUntil={row.original.delayUntil} />
+            {row.original.status === 'Delaying' && (
+              <DelayCountdown delayUntil={row.original.delayUntil!} />
             )}
             <div className="flex gap-2">
               {(row.original.status === 'Error' ||
@@ -399,10 +399,6 @@ export function TaskTable() {
     getRowId: (row) => row.id,
     enableRowSelection: true,
   });
-
-  useEffect(() => {
-    console.log('tasks', tasks);
-  }, [tasks]);
 
   return (
     <>

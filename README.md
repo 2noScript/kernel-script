@@ -100,7 +100,7 @@ This library uses a layered architecture with Controllers, Services, and Reposit
 | Layer        | Component        | Description                                |
 | ------------ | ---------------- | ------------------------------------------ |
 | Bootstrap    | bootstrap        | Initialize background script               |
-| Controllers  | QueueController  | Handle QUEUE_COMMAND (add, start, stop...) |
+| Controllers  | QueueController  | Handle COMMANDS (add, start, stop...) |
 | Controllers  | DirectController | Handle DIRECT_COMMAND (execute, stop...)   |
 | Services     | TaskService      | Task CRUD: create, update, publishTasks    |
 | Services     | QueueService     | Queue management, concurrency, callbacks   |
@@ -118,7 +118,7 @@ sequenceDiagram
     participant Repo as Repositories
     participant Event as EventEmitter
 
-    UI->>Ctrl: QUEUE_COMMAND / DIRECT_COMMAND
+    UI->>Ctrl: COMMANDS / DIRECT_COMMAND
     Ctrl->>Svc: Business Logic
     Svc->>Repo: DB Operations
     Svc->>Svc: Process Task
@@ -142,7 +142,7 @@ graph LR
 | Step | Component       | Task Status | Description                    |
 | ---- | --------------- | ----------- | ------------------------------ |
 | 1    | UI              | -           | User calls `createTask(input)` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND         |
+| 2    | QueueController | -           | Receives COMMANDS         |
 | 3    | TaskService     | Draft       | Creates task in DB             |
 | 4    | TaskRepository  | Draft       | Saves task with status: Draft  |
 | 5    | EventEmitter    | -           | Broadcasts to UI               |
@@ -161,7 +161,7 @@ graph LR
 | Step | Component       | Task Status | Description                        |
 | ---- | --------------- | ----------- | ---------------------------------- |
 | 1    | UI              | Draft       | User calls `publishTasks(taskIds)` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND             |
+| 2    | QueueController | -           | Receives COMMANDS             |
 | 3    | TaskService     | Waiting     | Updates status to Waiting          |
 | 4    | QueueService    | Waiting     | Adds to queue                      |
 | 5    | EventEmitter    | -           | Broadcasts to UI                   |
@@ -181,7 +181,7 @@ graph LR
 | Step | Component       | Task Status | Description               |
 | ---- | --------------- | ----------- | ------------------------- |
 | 1    | UI              | Waiting     | User calls `queueStart()` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND    |
+| 2    | QueueController | -           | Receives COMMANDS    |
 | 3    | QueueService    | Running     | Updates status to Running |
 | 4    | Engine          | Running     | Executes task logic       |
 | 5    | EngineResult    | Completed   | On success: saves result  |
@@ -224,7 +224,7 @@ graph LR
 | Step | Component       | Task Status | Description              |
 | ---- | --------------- | ----------- | ------------------------ |
 | 1    | UI              | Running     | User calls `queueStop()` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND   |
+| 2    | QueueController | -           | Receives COMMANDS   |
 | 3    | QueueService    | Waiting     | Resets Running → Waiting |
 | 4    | TaskRepository  | Waiting     | Saves status             |
 | 5    | EventEmitter    | -           | Broadcasts to UI         |
@@ -242,7 +242,7 @@ graph LR
 | Step | Component       | Task Status     | Description                      |
 | ---- | --------------- | --------------- | -------------------------------- |
 | 1    | UI              | Waiting/Running | User calls `queueCancelTask(id)` |
-| 2    | QueueController | -               | Receives QUEUE_COMMAND           |
+| 2    | QueueController | -               | Receives COMMANDS           |
 | 3    | TaskRepository  | Cancelled       | Sets status to Cancelled         |
 | 4    | EventEmitter    | -               | Broadcasts to UI                 |
 
@@ -260,7 +260,7 @@ graph LR
 | Step | Component       | Task Status | Description               |
 | ---- | --------------- | ----------- | ------------------------- |
 | 1    | UI              | -           | User calls `queueClear()` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND    |
+| 2    | QueueController | -           | Receives COMMANDS    |
 | 3    | QueueService    | -           | Clears all tasks in queue |
 | 4    | TaskRepository  | -           | Deletes all tasks from DB |
 | 5    | EventEmitter    | -           | Broadcasts to UI          |
@@ -279,7 +279,7 @@ graph LR
 | Step | Component       | Task Status | Description                    |
 | ---- | --------------- | ----------- | ------------------------------ |
 | 1    | UI              | Error       | User calls `retryTask(taskId)` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND         |
+| 2    | QueueController | -           | Receives COMMANDS         |
 | 3    | TaskService     | Waiting     | Resets Error → Waiting         |
 | 4    | QueueService    | Waiting     | Re-adds to queue               |
 | 5    | EventEmitter    | -           | Broadcasts to UI               |
@@ -297,7 +297,7 @@ graph LR
 | Step | Component       | Task Status | Description                   |
 | ---- | --------------- | ----------- | ----------------------------- |
 | 1    | UI              | Running     | User calls `skipTask(taskId)` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND        |
+| 2    | QueueController | -           | Receives COMMANDS        |
 | 3    | TaskRepository  | Skipped     | Sets status to Skipped        |
 | 4    | EventEmitter    | -           | Broadcasts to UI              |
 
@@ -315,7 +315,7 @@ graph LR
 | Step | Component       | Task Status | Description                     |
 | ---- | --------------- | ----------- | ------------------------------- |
 | 1    | UI              | Any         | User calls `deleteTask(taskId)` |
-| 2    | QueueController | -           | Receives QUEUE_COMMAND          |
+| 2    | QueueController | -           | Receives COMMANDS          |
 | 3    | TaskService     | -           | Validates task exists           |
 | 4    | TaskRepository  | -           | Deletes from DB                 |
 | 5    | EventEmitter    | -           | Broadcasts to UI                |
@@ -524,7 +524,7 @@ const queueController = createQueueController();
 const directController = createDirectController();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'QUEUE_COMMAND') {
+  if (message.type === 'COMMANDS') {
     queueController.handle(message, sendResponse);
   } else if (message.type === 'DIRECT_COMMAND') {
     directController.handle(message, sendResponse);

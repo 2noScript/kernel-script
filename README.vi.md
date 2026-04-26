@@ -100,7 +100,7 @@ Thư viện này sử dụng kiến trúc nhiều lớp với Controllers, Servi
 | Lớp          | Component        | Mô tả                                     |
 | ------------ | ---------------- | ----------------------------------------- |
 | Bootstrap    | bootstrap        | Khởi tạo background script                |
-| Controllers  | QueueController  | Xử lý QUEUE_COMMAND (add, start, stop...) |
+| Controllers  | QueueController  | Xử lý COMMANDS (add, start, stop...) |
 | Controllers  | DirectController | Xử lý DIRECT_COMMAND (execute, stop...)   |
 | Services     | TaskService      | CRUD tác vụ: create, update, publishTasks |
 | Services     | QueueService     | Quản lý hàng đợi, concurrency, callbacks  |
@@ -118,7 +118,7 @@ sequenceDiagram
     participant Repo as Repositories
     participant Event as EventEmitter
 
-    UI->>Ctrl: QUEUE_COMMAND / DIRECT_COMMAND
+    UI->>Ctrl: COMMANDS / DIRECT_COMMAND
     Ctrl->>Svc: Business Logic
     Svc->>Repo: DB Operations
     Svc->>Svc: Process Task
@@ -142,7 +142,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                        |
 | ---- | --------------- | ----------- | ---------------------------- |
 | 1    | UI              | -           | User gọi `createTask(input)` |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND           |
+| 2    | QueueController | -           | Nhận COMMANDS           |
 | 3    | TaskService     | Draft       | Tạo task trong DB            |
 | 4    | TaskRepository  | Draft       | Lưu task với status: Draft   |
 | 5    | EventEmitter    | -           | Broadcast tới UI             |
@@ -161,7 +161,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                            |
 | ---- | --------------- | ----------- | -------------------------------- |
 | 1    | UI              | Draft       | User gọi `publishTasks(taskIds)` |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND               |
+| 2    | QueueController | -           | Nhận COMMANDS               |
 | 3    | TaskService     | Waiting     | Cập nhật status Waiting          |
 | 4    | QueueService    | Waiting     | Thêm vào queue                   |
 | 5    | EventEmitter    | -           | Broadcast tới UI                 |
@@ -181,7 +181,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                     |
 | ---- | --------------- | ----------- | ------------------------- |
 | 1    | UI              | Waiting     | User gọi `queueStart()`   |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND        |
+| 2    | QueueController | -           | Nhận COMMANDS        |
 | 3    | QueueService    | Running     | Cập nhật status Running   |
 | 4    | Engine          | Running     | Thực thi logic            |
 | 5    | EngineResult    | Completed   | Thành công: lưu kết quả   |
@@ -224,7 +224,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                   |
 | ---- | --------------- | ----------- | ----------------------- |
 | 1    | UI              | Running     | User gọi `queueStop()`  |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND      |
+| 2    | QueueController | -           | Nhận COMMANDS      |
 | 3    | QueueService    | Waiting     | Reset Running → Waiting |
 | 4    | TaskRepository  | Waiting     | Lưu status              |
 | 5    | EventEmitter    | -           | Broadcast tới UI        |
@@ -242,7 +242,7 @@ graph LR
 | Bước | Component       | Task Status     | Mô tả                          |
 | ---- | --------------- | --------------- | ------------------------------ |
 | 1    | UI              | Waiting/Running | User gọi `queueCancelTask(id)` |
-| 2    | QueueController | -               | Nhận QUEUE_COMMAND             |
+| 2    | QueueController | -               | Nhận COMMANDS             |
 | 3    | TaskRepository  | Cancelled       | Đặt status Cancelled           |
 | 4    | EventEmitter    | -               | Broadcast tới UI               |
 
@@ -260,7 +260,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                     |
 | ---- | --------------- | ----------- | ------------------------- |
 | 1    | UI              | -           | User gọi `queueClear()`   |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND        |
+| 2    | QueueController | -           | Nhận COMMANDS        |
 | 3    | QueueService    | -           | Xóa all tasks trong queue |
 | 4    | TaskRepository  | -           | Xóa all tasks khỏi DB     |
 | 5    | EventEmitter    | -           | Broadcast tới UI          |
@@ -279,7 +279,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                        |
 | ---- | --------------- | ----------- | ---------------------------- |
 | 1    | UI              | Error       | User gọi `retryTask(taskId)` |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND           |
+| 2    | QueueController | -           | Nhận COMMANDS           |
 | 3    | TaskService     | Waiting     | Reset Error → Waiting        |
 | 4    | QueueService    | Waiting     | Thêm lại vào queue           |
 | 5    | EventEmitter    | -           | Broadcast tới UI             |
@@ -297,7 +297,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                       |
 | ---- | --------------- | ----------- | --------------------------- |
 | 1    | UI              | Running     | User gọi `skipTask(taskId)` |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND          |
+| 2    | QueueController | -           | Nhận COMMANDS          |
 | 3    | TaskRepository  | Skipped     | Đặt status Skipped          |
 | 4    | EventEmitter    | -           | Broadcast tới UI            |
 
@@ -315,7 +315,7 @@ graph LR
 | Bước | Component       | Task Status | Mô tả                         |
 | ---- | --------------- | ----------- | ----------------------------- |
 | 1    | UI              | Any         | User gọi `deleteTask(taskId)` |
-| 2    | QueueController | -           | Nhận QUEUE_COMMAND            |
+| 2    | QueueController | -           | Nhận COMMANDS            |
 | 3    | TaskService     | -           | Kiểm tra task tồn tại         |
 | 4    | TaskRepository  | -           | Xóa khỏi DB                   |
 | 5    | EventEmitter    | -           | Broadcast tới UI              |
@@ -533,7 +533,7 @@ const queueController = createQueueController();
 const directController = createDirectController();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'QUEUE_COMMAND') {
+  if (message.type === 'COMMANDS') {
     queueController.handle(message, sendResponse);
   } else if (message.type === 'DIRECT_COMMAND') {
     directController.handle(message, sendResponse);

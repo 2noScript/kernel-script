@@ -1,4 +1,4 @@
-export const QUEUE_COMMAND = {
+export const COMMANDS = {
   SYNC: 'SYNC',
   CREATE_TASK: 'CREATE_TASK',
   CREATE_TASKS: 'CREATE_TASKS',
@@ -26,5 +26,15 @@ export const DIRECT_COMMAND = {
   IS_TASK_RUNNING: 'IS_TASK_RUNNING',
 } as const;
 
-export type QUEUE_COMMAND_TYPE = (typeof QUEUE_COMMAND)[keyof typeof QUEUE_COMMAND];
+// export const TASK_COMMAND = {
+//   CREATE_TASK: 'CREATE_TASK',
+//   CREATE_TASKS: 'CREATE_TASKS',
+//   DELETE_TASK: 'DELETE_TASK',
+//   DELETE_TASKS: 'DELETE_TASKS',
+//   UPDATE_TASK: 'UPDATE_TASK',
+//   SYNC:""
+// };
+
+export type COMMANDS_TYPE = (typeof COMMANDS)[keyof typeof COMMANDS];
 export type DIRECT_COMMAND_TYPE = (typeof DIRECT_COMMAND)[keyof typeof DIRECT_COMMAND];
+// export type TASK_COMMAND_TYPE = (typeof TASK_COMMAND)[keyof typeof TASK_COMMAND];

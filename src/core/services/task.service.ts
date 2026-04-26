@@ -90,6 +90,7 @@ export class TaskService {
       Cancelled: [],
       Previous: [],
       Skipped: [],
+      Delaying:[]
     };
 
     for (const task of tasks) {

@@ -35,7 +35,7 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
 
   chrome.runtime.onMessage.addListener(
     (message: any, _sender: any, sendResponse: (response?: any) => void) => {
-      if (message.type === 'QUEUE_COMMAND') {
+      if (message.type === 'COMMANDS') {
         const result = queueController(message);
 
         if (result && 'then' in result) {

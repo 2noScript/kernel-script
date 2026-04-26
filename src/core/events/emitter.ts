@@ -3,14 +3,13 @@ import { createHeartbeatHandler } from '@/core/utils/heartbeat';
 const handleHeartbeat = createHeartbeatHandler();
 
 export const EVENTS = {
-  TASK_STARTED: 'TASK_STARTED',
+  TASK_RUNNING: 'TASK_RUNNING',
   TASK_COMPLETED: 'TASK_COMPLETED',
   TASK_ERROR: 'TASK_ERROR',
   TASK_CANCELLED: 'TASK_CANCELLED',
   TASK_DELAYING: 'TASK_DELAYING',
-  TASK_UPDATED: 'TASK_UPDATED',
-  TASKS_UPDATED: 'TASKS_UPDATED',
   QUEUE_EMPTY: 'QUEUE_EMPTY',
+  ALL_STATE: 'ALL_STATE',
 } as const;
 
 export type EventType = (typeof EVENTS)[keyof typeof EVENTS];
@@ -42,7 +41,6 @@ export interface TasksUpdatedEvent {
   keycard: string;
   identifier: string;
   data: {
-    tasks: any[];
     status: {
       size: number;
       pending: number;
@@ -64,7 +62,7 @@ export type EventPayload =
   | QueueEmptyEvent;
 
 interface BroadcastMessage {
-  type: 'WORKER_EVENT' | 'DIRECT_EVENT';
+  type: 'TASK_EVENT' | 'DIRECT_EVENT';
   event: string;
   keycard: string;
   identifier: string;
@@ -80,10 +78,10 @@ const broadcast = (message: BroadcastMessage) => {
 export const emitEvent = (event: EventType, payload: EventPayload) => {
   const { keycard, identifier, ...data } = payload;
 
-  if (event === EVENTS.TASK_STARTED) {
+  if (event === EVENTS.TASK_RUNNING) {
     broadcast({
-      type: 'WORKER_EVENT',
-      event: EVENTS.TASK_STARTED,
+      type: 'TASK_EVENT',
+      event: EVENTS.TASK_RUNNING,
       keycard,
       identifier,
       data,
@@ -91,19 +89,19 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
     handleHeartbeat(1);
   }
 
-  if (event === EVENTS.TASK_UPDATED) {
-    broadcast({
-      type: 'DIRECT_EVENT',
-      event: EVENTS.TASK_UPDATED,
-      keycard,
-      identifier,
-      data,
-    });
-  }
+  // if (event === EVENTS.TASK_UPDATED) {
+  //   broadcast({
+  //     type: 'DIRECT_EVENT',
+  //     event: EVENTS.TASK_UPDATED,
+  //     keycard,
+  //     identifier,
+  //     data,
+  //   });
+  // }
 
   if (event === EVENTS.TASK_COMPLETED) {
     broadcast({
-      type: 'WORKER_EVENT',
+      type: 'TASK_EVENT',
       event: EVENTS.TASK_COMPLETED,
       keycard,
       identifier,
@@ -113,7 +111,7 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
 
   if (event === EVENTS.TASK_ERROR) {
     broadcast({
-      type: 'WORKER_EVENT',
+      type: 'TASK_EVENT',
       event: EVENTS.TASK_ERROR,
       keycard,
       identifier,
@@ -123,7 +121,7 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
 
   if (event === EVENTS.TASK_CANCELLED) {
     broadcast({
-      type: 'WORKER_EVENT',
+      type: 'TASK_EVENT',
       event: EVENTS.TASK_CANCELLED,
       keycard,
       identifier,
@@ -133,7 +131,7 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
 
   if (event === EVENTS.TASK_DELAYING) {
     broadcast({
-      type: 'WORKER_EVENT',
+      type: 'TASK_EVENT',
       event: EVENTS.TASK_DELAYING,
       keycard,
       identifier,
@@ -141,10 +139,10 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
     });
   }
 
-  if (event === EVENTS.TASKS_UPDATED) {
+  if (event === EVENTS.ALL_STATE) {
     broadcast({
-      type: 'WORKER_EVENT',
-      event: EVENTS.TASKS_UPDATED,
+      type: 'TASK_EVENT',
+      event: EVENTS.ALL_STATE,
       keycard,
       identifier,
       data,
@@ -153,7 +151,7 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
 
   if (event === EVENTS.QUEUE_EMPTY) {
     broadcast({
-      type: 'WORKER_EVENT',
+      type: 'TASK_EVENT',
       event: EVENTS.QUEUE_EMPTY,
       keycard,
       identifier,

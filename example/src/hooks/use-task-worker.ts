@@ -5,5 +5,6 @@ export function useTaskWorker() {
   return useWorker({
     engine: noopEngine,
     identifier: 'default',
+    debug: true,
   });
 }

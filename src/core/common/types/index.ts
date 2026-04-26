@@ -10,7 +10,8 @@ export type Task = {
     | 'Error'
     | 'Cancelled'
     | 'Previous'
-    | 'Skipped';
+    | 'Skipped'
+    | 'Delaying';
   progress: number;
   payload: Record<string, any>;
   result?: EngineResult;

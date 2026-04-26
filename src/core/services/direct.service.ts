@@ -22,7 +22,7 @@ export class DirectService {
 
     const updateTask = (updates: Partial<Task>) => {
       const updatedTask = { ...task, ...updates, id: task.id } as Task;
-      emitEvent(EVENTS.TASK_UPDATED, { keycard, identifier, task: updatedTask });
+      // emitEvent(EVENTS.TASK_UPDATED, { keycard, identifier, task: updatedTask });
     };
 
     try {

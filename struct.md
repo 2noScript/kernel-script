@@ -3,7 +3,7 @@ src/core/
 │   └── index.ts                    # NestJS: main.ts / bootstrap
 │
 ├── controllers/                   # NestJS: controllers/
-│   ├── queue.controller.ts     # Handle QUEUE_COMMAND
+│   ├── queue.controller.ts     # Handle COMMANDS
 │   └── direct.controller.ts    # Handle DIRECT_COMMAND
 │
 ├── services/                    # NestJS: services/ (Business Logic)

@@ -372,10 +372,10 @@ export class QueueService {
     const entry = this.queues.get(key);
 
     if (!engine) {
-      console.warn(`No engine registered for platform: ${keycard}`);
+      console.warn(`No engine registered for : ${keycard}`);
       this.updateTaskStatus(keycard, identifier, task.id, {
         status: 'Error',
-        errorMessage: 'Platform not supported',
+        errorMessage: `No engine registered for : ${keycard}`,
       });
       return;
     }
@@ -392,10 +392,10 @@ export class QueueService {
       return;
     }
 
-    this.updateTaskStatus(keycard, identifier, task.id, {
-      status: 'Running',
-      isQueued: true,
-    });
+    // this.updateTaskStatus(keycard, identifier, task.id, {
+    //   status: 'Running',
+    //   isQueued: true,
+    // });
 
     const { delayMin, delayMax } = entry.taskConfig;
     const controller = new AbortController();
@@ -405,14 +405,23 @@ export class QueueService {
       const delayMs = Math.floor(Math.random() * (delayMax - delayMin + 1) + delayMin) * 1000;
       const delayUntil = Date.now() + delayMs;
 
-      this.updateTaskStatus(keycard, identifier, task.id, { delayUntil });
-      await taskRepository.saveTask(keycard, identifier, { ...task, delayUntil });
+      this.updateTaskStatus(keycard, identifier, task.id, {
+        status: 'Delaying',
+        isQueued: true,
+        delayUntil,
+      });
+      await taskRepository.saveTask(keycard, identifier, {
+        ...task,
+        status: 'Delaying',
+        isQueued: true,
+        delayUntil,
+      });
 
       emitEvent(EVENTS.TASK_DELAYING, {
         keycard,
         identifier,
         taskId: task.id,
-        task: { ...task, delayUntil },
+        task: { ...task, status: 'Delaying', isQueued: true, delayUntil },
       });
 
       try {
@@ -448,7 +457,17 @@ export class QueueService {
       }
     }
 
-    this.updateTaskStatus(keycard, identifier, task.id, { delayUntil: undefined });
+    this.updateTaskStatus(keycard, identifier, task.id, {
+      delayUntil: undefined,
+      status: 'Running',
+    });
+
+    // emitEvent(EVENTS.TASK_CANCELLED, {
+    //          ...task,
+    //     status: 'Delaying',
+    //     isQueued: true,
+    //     delayUntil,
+    // });
 
     const currentTaskBeforeStart = this.findTask(keycard, identifier, task.id);
     if (!currentTaskBeforeStart || currentTaskBeforeStart.status !== 'Running') {

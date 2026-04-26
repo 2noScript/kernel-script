@@ -26,7 +26,7 @@ export interface SyncResponse {
   taskConfig: TaskConfig;
 }
 
-export const createQueueController = (debugLog: (...args: unknown[]) => void) => {
+export const createTaskController = (debugLog: (...args: unknown[]) => void) => {
   return async (message: CommandPayload) => {
     const { command, keycard, identifier = '', payload } = message;
 
