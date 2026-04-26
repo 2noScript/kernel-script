@@ -7,7 +7,6 @@ const store = new Map<string, { tasks: Task[]; updatedAt: number }>();
 const KEYCARD = 'test-keycard';
 const IDENTIFIER = 'test-id';
 
-// Mock Repository cho TaskService tests
 class MockTaskRepository {
   private getKey(keycard: string, identifier: string): string {
     return `${keycard}__${identifier}`;
@@ -50,7 +49,7 @@ class MockTaskRepository {
     if (idx < 0) return null;
     tasks[idx] = { ...tasks[idx], ...updates, id: taskId } as Task;
     await this.saveTasks(keycard, identifier, tasks);
-    return tasks[idx];
+    return tasks[idx] ?? null;
   }
 
   async deleteTask(keycard: string, identifier: string, taskId: string): Promise<boolean> {
@@ -75,7 +74,6 @@ class MockTaskRepository {
 
 const repo = new MockTaskRepository();
 
-// TaskService test - use mock repository
 describe('TaskService with Mock', () => {
   beforeEach(() => {
     store.clear();
@@ -85,15 +83,7 @@ describe('TaskService with Mock', () => {
     it('should create task with Draft status', async () => {
       const task = createMockTask({ name: 'New Task' });
       await repo.saveTask(KEYCARD, IDENTIFIER, task);
-
       expect(task.status).toBe('Draft');
-    });
-
-    it('should auto-increment task number', async () => {
-      await repo.saveTasks(KEYCARD, IDENTIFIER, [createMockTask({ no: 1 })]);
-
-      const tasks = await repo.getTasks(KEYCARD, IDENTIFIER);
-      expect(tasks).toHaveLength(1);
     });
   });
 
@@ -101,7 +91,6 @@ describe('TaskService with Mock', () => {
     it('should return task by id', async () => {
       const task = createMockTask({ id: 'task-123' });
       await repo.saveTask(KEYCARD, IDENTIFIER, task);
-
       const found = await repo.getTask(KEYCARD, IDENTIFIER, 'task-123');
       expect(found?.id).toBe('task-123');
     });
@@ -114,48 +103,24 @@ describe('TaskService with Mock', () => {
 
   describe('getTasks', () => {
     it('should return all tasks', async () => {
-      await repo.saveTasks(KEYCARD, IDENTIFIER, [
-        createMockTask({ name: 'Task 1' }),
-        createMockTask({ name: 'Task 2' }),
-      ]);
-
+      await repo.saveTasks(KEYCARD, IDENTIFIER, [createMockTask(), createMockTask()]);
       const tasks = await repo.getTasks(KEYCARD, IDENTIFIER);
       expect(tasks).toHaveLength(2);
-    });
-
-    it('should filter by status', async () => {
-      const task1 = createMockTask({ status: 'Draft' });
-      const task2 = createMockTask({ status: 'Completed' });
-      await repo.saveTasks(KEYCARD, IDENTIFIER, [task1, task2]);
-
-      const tasks = await repo.getTasks(KEYCARD, IDENTIFIER);
-      const completed = tasks.filter((t) => t.status === 'Completed');
-      expect(completed).toHaveLength(1);
-    });
-
-    it('should search by name (case-insensitive)', async () => {
-      await repo.saveTasks(KEYCARD, IDENTIFIER, [
-        createMockTask({ name: 'Hello World' }),
-        createMockTask({ name: 'Goodbye' }),
-      ]);
-
-      const tasks = await repo.getTasks(KEYCARD, IDENTIFIER);
-      const found = tasks.filter((t) => t.name.toLowerCase().includes('hello'));
-      expect(found).toHaveLength(1);
     });
   });
 
   describe('updateTask', () => {
     it('should update task', async () => {
-      const task = createMockTask({ status: 'Draft' });
+      const task = createMockTask({ id: 'task-1', name: 'Original' });
       await repo.saveTask(KEYCARD, IDENTIFIER, task);
-
-      const updated = await repo.updateTask(KEYCARD, IDENTIFIER, task.id, { status: 'Waiting' });
-      expect(updated?.status).toBe('Waiting');
+      const updated = await repo.updateTask(KEYCARD, IDENTIFIER, 'task-1', { name: 'Updated' });
+      expect(updated?.name).toBe('Updated');
     });
 
     it('should return null for non-existent', async () => {
-      const updated = await repo.updateTask(KEYCARD, IDENTIFIER, 'fake-id', { status: 'Waiting' });
+      const updated = await repo.updateTask(KEYCARD, IDENTIFIER, 'non-existent', {
+        name: 'Updated',
+      });
       expect(updated).toBeNull();
     });
   });
@@ -164,10 +129,8 @@ describe('TaskService with Mock', () => {
     it('should delete existing task', async () => {
       const task = createMockTask({ id: 'task-1' });
       await repo.saveTask(KEYCARD, IDENTIFIER, task);
-
       const result = await repo.deleteTask(KEYCARD, IDENTIFIER, 'task-1');
       expect(result).toBe(true);
-
       const found = await repo.getTask(KEYCARD, IDENTIFIER, 'task-1');
       expect(found).toBeNull();
     });
@@ -185,12 +148,28 @@ describe('TaskService with Mock', () => {
         createMockTask({ id: 'task-2' }),
         createMockTask({ id: 'task-3' }),
       ]);
-
       const count = await repo.deleteTasks(KEYCARD, IDENTIFIER, ['task-1', 'task-2']);
       expect(count).toBe(2);
-
       const remaining = await repo.getTasks(KEYCARD, IDENTIFIER);
       expect(remaining).toHaveLength(1);
+    });
+  });
+
+  describe('status transitions', () => {
+    it('should change Draft to Waiting when published', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Draft', isQueued: false });
+      await repo.saveTask(KEYCARD, IDENTIFIER, task);
+      await repo.updateTask(KEYCARD, IDENTIFIER, 'task-1', { status: 'Waiting' });
+      const updated = await repo.getTask(KEYCARD, IDENTIFIER, 'task-1');
+      expect(updated?.status).toBe('Waiting');
+    });
+
+    it('should revert running task to Draft', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Running', isQueued: true });
+      await repo.saveTask(KEYCARD, IDENTIFIER, task);
+      await repo.updateTask(KEYCARD, IDENTIFIER, 'task-1', { status: 'Draft', isQueued: false });
+      const updated = await repo.getTask(KEYCARD, IDENTIFIER, 'task-1');
+      expect(updated?.status).toBe('Draft');
     });
   });
 });

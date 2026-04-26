@@ -128,45 +128,217 @@ sequenceDiagram
 
 ### Task Flows
 
-#### Queue Execution Flow
+#### Create Flow (createTask)
 
 ```mermaid
 graph LR
-    A[UI: createTask] --> B[QueueController]
+    A[UI: createTask] -->|status: Draft| B[QueueController]
     B --> C[TaskService.createTask]
-    C --> D[TaskRepository.save]
-    D --> E[QueueService.add]
-    E --> F[QueueService.processTask]
-    F --> G[Engine.execute]
-    G --> H[TaskRepository.save]
-    H --> I[EventEmitter.emit]
-    I --> J[UI: broadcast]
+    C -->|status: Draft| D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
 ```
 
-#### Direct Execution Flow
+| Step | Component       | Task Status | Description                    |
+| ---- | --------------- | ----------- | ------------------------------ |
+| 1    | UI              | -           | User calls `createTask(input)` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND         |
+| 3    | TaskService     | Draft       | Creates task in DB             |
+| 4    | TaskRepository  | Draft       | Saves task with status: Draft  |
+| 5    | EventEmitter    | -           | Broadcasts to UI               |
+
+#### Publish Flow (publishTasks)
 
 ```mermaid
 graph LR
-    A[UI: execute] --> B[DirectController]
-    B --> C[DirectService.execute]
-    C --> D[Engine.execute]
-    D --> E[TaskRepository.save]
+    A[UI: publishTasks] -->|status: Waiting| B[QueueController]
+    B --> C[TaskService.publishTasks]
+    C -->|status: Waiting| D[QueueService.add]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description                        |
+| ---- | --------------- | ----------- | ---------------------------------- |
+| 1    | UI              | Draft       | User calls `publishTasks(taskIds)` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND             |
+| 3    | TaskService     | Waiting     | Updates status to Waiting          |
+| 4    | QueueService    | Waiting     | Adds to queue                      |
+| 5    | EventEmitter    | -           | Broadcasts to UI                   |
+
+#### Queue Execution Flow (queueStart)
+
+```mermaid
+graph LR
+    A[UI: queueStart] --> B[QueueController]
+    B --> C[QueueService.process]
+    C -->|status: Running| D[Engine.execute]
+    D -->|status: Completed| E[TaskRepository.save]
     E --> F[EventEmitter.emit]
     F --> G[UI: broadcast]
 ```
+
+| Step | Component       | Task Status | Description               |
+| ---- | --------------- | ----------- | ------------------------- |
+| 1    | UI              | Waiting     | User calls `queueStart()` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND    |
+| 3    | QueueService    | Running     | Updates status to Running |
+| 4    | Engine          | Running     | Executes task logic       |
+| 5    | EngineResult    | Completed   | On success: saves result  |
+| 6    | TaskRepository  | Completed   | Updates task with result  |
+| 7    | EventEmitter    | -           | Broadcasts to UI          |
+
+#### Direct Execution Flow (runTask)
+
+```mermaid
+graph LR
+    A[UI: runTask] --> B[DirectController]
+    B -->|status: Running| C[DirectService.execute]
+    C --> D[Engine.execute]
+    D -->|status: Completed| E[TaskRepository.save]
+    E --> F[EventEmitter.emit]
+    F --> G[UI: broadcast]
+```
+
+| Step | Component        | Task Status | Description                  |
+| ---- | ---------------- | ----------- | ---------------------------- |
+| 1    | UI               | Waiting     | User calls `runTask(taskId)` |
+| 2    | DirectController | -           | Receives DIRECT_COMMAND      |
+| 3    | DirectService    | Running     | Sets status to Running       |
+| 4    | Engine           | Running     | Executes task directly       |
+| 5    | EngineResult     | Completed   | On success: saves result     |
+| 6    | TaskRepository   | Completed   | Updates task with result     |
+| 7    | EventEmitter     | -           | Broadcasts to UI             |
+
+#### Stop Flow (queueStop)
+
+```mermaid
+graph LR
+    A[UI: queueStop] --> B[QueueController]
+    B --> C[QueueService.stop]
+    C -->|status: Waiting| D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description              |
+| ---- | --------------- | ----------- | ------------------------ |
+| 1    | UI              | Running     | User calls `queueStop()` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND   |
+| 3    | QueueService    | Waiting     | Resets Running → Waiting |
+| 4    | TaskRepository  | Waiting     | Saves status             |
+| 5    | EventEmitter    | -           | Broadcasts to UI         |
+
+#### Cancel Flow (queueCancelTask)
+
+```mermaid
+graph LR
+    A[UI: queueCancelTask] --> B[QueueController]
+    B -->|status: Cancelled| C[TaskRepository.save]
+    C --> D[EventEmitter.emit]
+    D --> E[UI: broadcast]
+```
+
+| Step | Component       | Task Status     | Description                      |
+| ---- | --------------- | --------------- | -------------------------------- |
+| 1    | UI              | Waiting/Running | User calls `queueCancelTask(id)` |
+| 2    | QueueController | -               | Receives QUEUE_COMMAND           |
+| 3    | TaskRepository  | Cancelled       | Sets status to Cancelled         |
+| 4    | EventEmitter    | -               | Broadcasts to UI                 |
+
+#### Clear Flow (queueClear)
+
+```mermaid
+graph LR
+    A[UI: queueClear] --> B[QueueController]
+    B --> C[QueueService.clear]
+    C --> D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description               |
+| ---- | --------------- | ----------- | ------------------------- |
+| 1    | UI              | -           | User calls `queueClear()` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND    |
+| 3    | QueueService    | -           | Clears all tasks in queue |
+| 4    | TaskRepository  | -           | Deletes all tasks from DB |
+| 5    | EventEmitter    | -           | Broadcasts to UI          |
+
+#### Retry Flow (retryTask)
+
+```mermaid
+graph LR
+    A[UI: retryTask] --> B[QueueController]
+    B -->|status: Waiting| C[TaskService.retryTask]
+    C --> D[QueueService.add]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description                    |
+| ---- | --------------- | ----------- | ------------------------------ |
+| 1    | UI              | Error       | User calls `retryTask(taskId)` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND         |
+| 3    | TaskService     | Waiting     | Resets Error → Waiting         |
+| 4    | QueueService    | Waiting     | Re-adds to queue               |
+| 5    | EventEmitter    | -           | Broadcasts to UI               |
+
+#### Skip Flow (skipTask)
+
+```mermaid
+graph LR
+    A[UI: skipTask] --> B[QueueController]
+    B -->|status: Skipped| C[TaskRepository.save]
+    C --> D[EventEmitter.emit]
+    D --> E[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description                   |
+| ---- | --------------- | ----------- | ----------------------------- |
+| 1    | UI              | Running     | User calls `skipTask(taskId)` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND        |
+| 3    | TaskRepository  | Skipped     | Sets status to Skipped        |
+| 4    | EventEmitter    | -           | Broadcasts to UI              |
+
+#### Delete Flow (deleteTask)
+
+```mermaid
+graph LR
+    A[UI: deleteTask] --> B[QueueController]
+    B --> C[TaskService.deleteTask]
+    C --> D[TaskRepository.delete]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Step | Component       | Task Status | Description                     |
+| ---- | --------------- | ----------- | ------------------------------- |
+| 1    | UI              | Any         | User calls `deleteTask(taskId)` |
+| 2    | QueueController | -           | Receives QUEUE_COMMAND          |
+| 3    | TaskService     | -           | Validates task exists           |
+| 4    | TaskRepository  | -           | Deletes from DB                 |
+| 5    | EventEmitter    | -           | Broadcasts to UI                |
 
 ### Task Lifecycle
 
 ```mermaid
 stateDiagram-v2
     [*] --> Draft
-    Draft --> Waiting: add() / publishTasks()
-    Waiting --> Running: start() / execute()
+    Draft --> Waiting: publishTasks()
+    Waiting --> Running: queueStart()
+    Waiting --> Draft: unpublishTasks()
+    Waiting --> Running: runTask() [direct]
     Running --> Completed: success
     Running --> Error: failed
-    Error --> Waiting: retryTasks
+    Running --> Skipped: skipTask()
+    Error --> Waiting: retryTask()
+    Error --> Skipped: skipTask()
+    Waiting --> Cancelled: queueCancelTask()
+    Running --> Cancelled: queueCancelTask()
+    Cancelled --> [*]
     Completed --> [*]
-    Error --> [*]
+    Skipped --> [*]
 ```
 
 ### Persistence & Hydration
@@ -505,13 +677,13 @@ A: Make sure to call `queueStart()` after adding tasks, or use `publishTasks()` 
 A: Verify `bootstrap()` is called on startup. Check IndexedDB permissions.
 
 **Q: React hook not updating**
-A: Ensure your store is passed correctly to `useWorker` funcs parameter. Check chrome.runtime.id exists.
+A: Check chrome.runtime.id exists. Ensure `useWorker` is connected to background script.
 
 **Q: Engine not found**
 A: Register your engine with `createEngineRegistry().register(engine)` before calling `bootstrap()`.
 
 **Q: "No engine registered for platform"**
-A: Make sure your engine's keycard matches the keycard you're using in addTask/publishTasks.
+A: Make sure your engine's keycard matches the keycard you're using in publishTasks/add.
 
 **Q: TypeScript errors on import**
 A: Ensure peer dependencies are installed: `npm install react react-dom`

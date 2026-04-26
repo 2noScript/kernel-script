@@ -1,24 +1,10 @@
 import { engineHub } from '@/core/common/engine-hub';
 import { TaskContext } from '@/core/common/task.context';
+import { emitEvent, EVENTS } from '@/core/events/emitter';
 import type { Task, EngineResult } from '@/core/common/types';
-
-export interface DirectCallbacks {
-  onTaskUpdate?: (keycard: string, identifier: string, task: Task) => void;
-  onTaskComplete?: (
-    keycard: string,
-    identifier: string,
-    taskId: string,
-    result: EngineResult
-  ) => void;
-}
 
 export class DirectService {
   private abortControllers: Map<string, AbortController> = new Map();
-  private callbacks: DirectCallbacks = {};
-
-  registerCallbacks(callbacks: DirectCallbacks): void {
-    this.callbacks = callbacks;
-  }
 
   private getAbortKey(keycard: string, identifier: string, taskId: string): string {
     return `${keycard}__${identifier}__${taskId}`;
@@ -36,7 +22,7 @@ export class DirectService {
 
     const updateTask = (updates: Partial<Task>) => {
       const updatedTask = { ...task, ...updates, id: task.id } as Task;
-      this.callbacks.onTaskUpdate?.(keycard, identifier, updatedTask);
+      emitEvent(EVENTS.TASK_UPDATED, { keycard, identifier, task: updatedTask });
     };
 
     try {
@@ -51,7 +37,6 @@ export class DirectService {
         updateTask({ status: 'Error', errorMessage: result.error, result });
       }
 
-      this.callbacks.onTaskComplete?.(keycard, identifier, task.id, result);
       return result;
     } catch (error) {
       const isCancelled =
@@ -59,17 +44,9 @@ export class DirectService {
 
       if (isCancelled) {
         updateTask({ status: 'Waiting' });
-        this.callbacks.onTaskComplete?.(keycard, identifier, task.id, {
-          success: false,
-          error: 'CANCELLED',
-        });
       } else {
         const errorMsg = error instanceof Error ? error.message : String(error);
         updateTask({ status: 'Error', errorMessage: errorMsg });
-        this.callbacks.onTaskComplete?.(keycard, identifier, task.id, {
-          success: false,
-          error: errorMsg,
-        });
       }
 
       return {

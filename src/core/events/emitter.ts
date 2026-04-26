@@ -1,3 +1,7 @@
+import { createHeartbeatHandler } from '@/core/utils/heartbeat';
+
+const handleHeartbeat = createHeartbeatHandler();
+
 export const EVENTS = {
   TASK_STARTED: 'TASK_STARTED',
   TASK_COMPLETED: 'TASK_COMPLETED',
@@ -84,6 +88,7 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
       identifier,
       data,
     });
+    handleHeartbeat(1);
   }
 
   if (event === EVENTS.TASK_UPDATED) {
@@ -154,5 +159,6 @@ export const emitEvent = (event: EventType, payload: EventPayload) => {
       identifier,
       data,
     });
+    handleHeartbeat(0);
   }
 };

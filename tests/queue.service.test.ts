@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { QueueService, type QueueCallbacks } from '@/core/services/queue.service';
+import { QueueService } from '@/core/services/queue.service';
 import { engineHub } from '@/core/common/engine-hub';
 import { createMockTask, createMockEngine } from './setup';
 
@@ -8,13 +8,6 @@ const IDENTIFIER = 'test-id';
 let testCounter = 0;
 let currentKeycard = '';
 
-const callbacks: QueueCallbacks = {
-  onTaskStart: (keycard, identifier, taskId) => {},
-  onTaskComplete: (keycard, identifier, taskId, result) => {},
-  onTaskCancelled: (keycard, identifier, taskId) => {},
-  onQueueEmpty: (keycard, identifier) => {},
-};
-
 describe('QueueService', () => {
   let queueService: QueueService;
 
@@ -22,7 +15,6 @@ describe('QueueService', () => {
     testCounter++;
     currentKeycard = `test-keycard-${testCounter}`;
     queueService = new QueueService();
-    queueService.registerCallbacks(callbacks);
   });
 
   afterEach(async () => {
@@ -93,6 +85,60 @@ describe('QueueService', () => {
 
       const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.isRunning).toBe(false);
+    });
+
+    it('should set Running task to Cancelled when stop queue', async () => {
+      const engine = createMockEngine({ success: true }, currentKeycard);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        threads: 1,
+        delayMin: 10,
+        delayMax: 10,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await queueService.stop(currentKeycard, IDENTIFIER);
+
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
+    });
+
+    it('should set status to Cancelled when stop during engine execution', async () => {
+      let executeResolve: (result: any) => void = () => {};
+      const delayedEngine = {
+        keycard: currentKeycard,
+        execute: async () => {
+          return new Promise((resolve) => {
+            executeResolve = resolve;
+          });
+        },
+      };
+      queueService.registerEngine(delayedEngine);
+
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        threads: 1,
+        delayMin: 0,
+        delayMax: 0,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      await queueService.stop(currentKeycard, IDENTIFIER);
+
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
     });
   });
 
@@ -172,6 +218,63 @@ describe('QueueService', () => {
       const taskCountAfter = queueService.getTasks(currentKeycard, IDENTIFIER).length;
 
       expect(taskCountAfter).toBe(taskCountBefore);
+    });
+
+    it('should set Running task to Cancelled when cancelTask (direct)', async () => {
+      const task = createMockTask({ id: 'task-running', status: 'Running' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, 'task-running');
+
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
+    });
+
+    it('should set status to Cancelled when cancelling task after delay starts', async () => {
+      const engine = createMockEngine({ success: true }, currentKeycard);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        threads: 1,
+        delayMin: 10,
+        delayMax: 10,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      const cancelledTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(cancelledTask?.status).toBe('Cancelled');
+    });
+  });
+
+  describe('haltTask', () => {
+    it('should set task status to Cancelled', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Running' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      queueService.haltTask(currentKeycard, IDENTIFIER, 'task-1');
+
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
+    });
+
+    it('should set Waiting task to Cancelled when haltTask', async () => {
+      const task = createMockTask({ id: 'task-waiting', status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      queueService.haltTask(currentKeycard, IDENTIFIER, 'task-waiting');
+
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
     });
   });
 
@@ -294,37 +397,7 @@ describe('QueueService', () => {
     });
   });
 
-  describe('callbacks', () => {
-    it('should call onTaskStart when task starts processing', async () => {
-      let startCalled = false;
-      queueService.registerCallbacks({
-        ...callbacks,
-        onTaskStart: () => {
-          startCalled = true;
-        },
-      });
-
-      const engine = createMockEngine({ success: true }, currentKeycard);
-      queueService.registerEngine(engine);
-
-      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
-        threads: 1,
-        delayMin: 0,
-        delayMax: 0,
-        stopOnErrorCount: 0,
-      });
-
-      const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(currentKeycard, IDENTIFIER, task);
-      await queueService.start(currentKeycard, IDENTIFIER);
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      expect(startCalled).toBe(true);
-    });
-  });
-
-  describe('cancel during execution', () => {
+  describe('task execution', () => {
     it('should set status to Cancelled after starting queue and cancelling', async () => {
       const engine = createMockEngine({ success: true }, currentKeycard);
       queueService.registerEngine(engine);
@@ -350,6 +423,168 @@ describe('QueueService', () => {
         .getTasks(currentKeycard, IDENTIFIER)
         .find((t) => t.id === task.id);
       expect(cancelledTask?.status).toBe('Cancelled');
+    });
+
+    it('should not change status when task is Completed', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Completed' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, 'task-1');
+
+      const updatedTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === 'task-1');
+      expect(updatedTask?.status).toBe('Completed');
+    });
+
+    it('should not change status when Completed task halts', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Completed' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      queueService.haltTask(currentKeycard, IDENTIFIER, 'task-1');
+
+      const updatedTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === 'task-1');
+      expect(updatedTask?.status).toBe('Completed');
+    });
+
+    it('should set Error task to Cancelled when haltask', async () => {
+      const task = createMockTask({ id: 'task-1', status: 'Error' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      queueService.haltTask(currentKeycard, IDENTIFIER, 'task-1');
+
+      const updatedTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === 'task-1');
+      expect(updatedTask?.status).toBe('Cancelled');
+    });
+  });
+
+  describe('FE to Backend Flow - Cancel Task', () => {
+    it('should cancel task during delay phase via complete FE flow', async () => {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        delayMin: 10,
+        delayMax: 10,
+        threads: 1,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const resultTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(resultTask?.status).toBe('Cancelled');
+    });
+
+    it('should cancel running task via complete FE flow', async () => {
+      const engine = createMockEngine({ success: true }, currentKeycard);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        delayMin: 0,
+        delayMax: 0,
+        threads: 1,
+        stopOnErrorCount: 0,
+      });
+
+      const task = createMockTask({ status: 'Waiting' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const resultTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(resultTask?.status).toBe('Cancelled');
+    });
+
+    it('should cancel waiting task via complete FE flow', async () => {
+      const task = createMockTask({ status: 'Waiting', isQueued: true });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      const resultTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(resultTask?.status).toBe('Cancelled');
+    });
+
+    it('should NOT change completed task status when cancelled', async () => {
+      const task = createMockTask({ status: 'Completed' });
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      const resultTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(resultTask?.status).toBe('Completed');
+    });
+
+    it('should cancel multiple tasks via queueCancelTasks', async () => {
+      const tasks = [
+        createMockTask({ status: 'Waiting' }),
+        createMockTask({ status: 'Running' }),
+        createMockTask({ status: 'Waiting' }),
+      ];
+      await queueService.addMany(currentKeycard, IDENTIFIER, tasks);
+
+      for (const task of tasks) {
+        await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+      }
+
+      const resultTasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(resultTasks.every((t) => t.status === 'Cancelled')).toBe(true);
+    });
+
+    it('should handle cancelling non-existent task gracefully', async () => {
+      const beforeTasks = queueService.getTasks(currentKeycard, IDENTIFIER).length;
+
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, 'non-existent-task-id');
+
+      const afterTasks = queueService.getTasks(currentKeycard, IDENTIFIER).length;
+      expect(afterTasks).toBe(beforeTasks);
+    });
+
+    it('should cancel all running tasks when queue is stopped', async () => {
+      const engine = createMockEngine({ success: true }, currentKeycard);
+      queueService.registerEngine(engine);
+
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
+        delayMin: 10,
+        delayMax: 10,
+        threads: 2,
+        stopOnErrorCount: 0,
+      });
+
+      const tasks = [createMockTask({ status: 'Waiting' }), createMockTask({ status: 'Waiting' })];
+      await queueService.addMany(currentKeycard, IDENTIFIER, tasks);
+      await queueService.start(currentKeycard, IDENTIFIER);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await queueService.stop(currentKeycard, IDENTIFIER);
+
+      const resultTasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(resultTasks.every((t) => t.status === 'Cancelled')).toBe(true);
+      expect(queueService.getStatus(currentKeycard, IDENTIFIER).isRunning).toBe(false);
     });
   });
 });

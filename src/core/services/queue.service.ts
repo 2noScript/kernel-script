@@ -12,21 +12,8 @@ export interface QueueStatus {
   isRunning: boolean;
 }
 
-export interface QueueCallbacks {
-  onTaskStart?: (keycard: string, identifier: string, taskId: string) => void;
-  onTaskComplete?: (
-    keycard: string,
-    identifier: string,
-    taskId: string,
-    result: EngineResult
-  ) => void;
-  onTaskCancelled?: (keycard: string, identifier: string, taskId: string) => void;
-  onQueueEmpty?: (keycard: string, identifier: string) => void;
-}
-
 export interface QueueOptions {
   defaultConcurrency?: number;
-  callbacks?: QueueCallbacks;
   debugLog?: (...args: unknown[]) => void;
 }
 
@@ -43,26 +30,15 @@ export class QueueService {
   private runningQueues: Set<string> = new Set();
   private concurrencyMap: Map<string, number> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
-  private callbacks: QueueCallbacks = {};
   private debugLog: (...args: unknown[]) => void = () => {};
 
   constructor(options: QueueOptions = {}) {
-    if (options.callbacks) {
-      this.callbacks = options.callbacks;
-    }
     if (options.debugLog) {
       this.debugLog = options.debugLog;
     }
   }
 
-  registerCallbacks(callbacks: QueueCallbacks): void {
-    this.callbacks = callbacks;
-  }
-
   registerOptions(options: QueueOptions): void {
-    if (options.callbacks) {
-      this.callbacks = { ...this.callbacks, ...options.callbacks };
-    }
     if (options.debugLog) {
       this.debugLog = options.debugLog;
     }
@@ -265,20 +241,21 @@ export class QueueService {
     const key = this.getQueueKey(keycard, identifier);
     const tasks = this.tasksMap.get(key) || [];
     const idx = tasks.findIndex((t) => t.id === taskId);
-    if (idx !== -1 && tasks[idx]?.status !== 'Completed') {
-      tasks[idx].status = 'Cancelled';
-      tasks[idx].isQueued = false;
-      this.tasksMap.set(key, tasks);
+    if (idx !== -1) {
+      const task = tasks[idx];
+      if (task && task.status !== 'Completed') {
+        task.status = 'Cancelled';
+        task.isQueued = false;
+        this.tasksMap.set(key, tasks);
 
-      taskRepository.saveTask(keycard, identifier, tasks[idx]);
+        taskRepository.saveTask(keycard, identifier, task);
 
-      this.callbacks.onTaskCancelled?.(keycard, identifier, taskId);
-
-      emitEvent(EVENTS.TASK_CANCELLED, {
-        keycard,
-        identifier,
-        task: tasks[idx],
-      });
+        emitEvent(EVENTS.TASK_CANCELLED, {
+          keycard,
+          identifier,
+          task,
+        });
+      }
     }
   }
 
@@ -317,8 +294,6 @@ export class QueueService {
     this.tasksMap.set(key, tasks);
 
     await taskRepository.saveTask(keycard, identifier, task);
-
-    this.callbacks.onTaskCancelled?.(keycard, identifier, taskId);
 
     emitEvent(EVENTS.TASK_CANCELLED, {
       keycard,
@@ -402,10 +377,6 @@ export class QueueService {
         status: 'Error',
         errorMessage: 'Platform not supported',
       });
-      this.callbacks.onTaskComplete?.(keycard, identifier, task.id, {
-        success: false,
-        error: 'Platform not supported',
-      });
       return;
     }
 
@@ -479,15 +450,14 @@ export class QueueService {
 
     this.updateTaskStatus(keycard, identifier, task.id, { delayUntil: undefined });
 
-    const currentTask = this.findTask(keycard, identifier, task.id);
-    if (!currentTask || currentTask.status !== 'Running') {
+    const currentTaskBeforeStart = this.findTask(keycard, identifier, task.id);
+    if (!currentTaskBeforeStart || currentTaskBeforeStart.status !== 'Running') {
       this.debugLog(
-        `[Queue] Task ${task.id} is no longer running. Status: ${currentTask?.status}. Exiting.`
+        `[Queue] Task ${task.id} cancelled or no longer running before PROCESS_START. Status: ${currentTaskBeforeStart?.status}. Exiting.`
       );
       return;
     }
 
-    this.callbacks.onTaskStart?.(keycard, identifier, task.id);
     this.debugLog(`[Queue] PROCESS_START ${task.id}`);
 
     const ctx = new TaskContext(task, controller.signal);
@@ -513,9 +483,18 @@ export class QueueService {
         return;
       }
 
-      if (result.error === 'CANCELLED') {
+      const shouldCancel = this.abortControllers.has(task.id);
+
+      if (result.error === 'CANCELLED' || shouldCancel) {
         this.updateTaskStatus(keycard, identifier, task.id, {
           status: 'Cancelled',
+          isQueued: false,
+        });
+      } else if (result.success && !shouldCancel) {
+        this.updateTaskStatus(keycard, identifier, task.id, {
+          status: 'Completed',
+          output: result.output,
+          progress: 100,
           isQueued: false,
         });
       } else {
@@ -527,8 +506,6 @@ export class QueueService {
           isQueued: false,
         });
       }
-
-      this.callbacks.onTaskComplete?.(keycard, identifier, task.id, result);
     } catch (error) {
       const isCancelled =
         error instanceof Error && (error.name === 'AbortError' || error.message === 'CANCELLED');
@@ -548,11 +525,6 @@ export class QueueService {
 
         entry.consecutiveErrors = (entry.consecutiveErrors || 0) + 1;
       }
-
-      this.callbacks.onTaskComplete?.(keycard, identifier, task.id, {
-        success: false,
-        error: String(error),
-      });
     } finally {
       this.abortControllers.delete(task.id);
       entry.queuedIds.delete(task.id);
@@ -594,7 +566,7 @@ export class QueueService {
     if (entry) {
       this.runningQueues.delete(key);
       entry.queue.pause();
-      this.callbacks.onQueueEmpty?.(keycard, identifier);
+      emitEvent(EVENTS.QUEUE_EMPTY, { keycard, identifier });
     }
   }
 }

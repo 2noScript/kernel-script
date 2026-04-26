@@ -128,45 +128,217 @@ sequenceDiagram
 
 ### Luồng tác vụ
 
-#### Luồng thực thi hàng đợi
+#### Luồng tạo (createTask)
 
 ```mermaid
 graph LR
-    A[UI: createTask] --> B[QueueController]
+    A[UI: createTask] -->|status: Draft| B[QueueController]
     B --> C[TaskService.createTask]
-    C --> D[TaskRepository.save]
-    D --> E[QueueService.add]
-    E --> F[QueueService.processTask]
-    F --> G[Engine.execute]
-    G --> H[TaskRepository.save]
-    H --> I[EventEmitter.emit]
-    I --> J[UI: broadcast]
+    C -->|status: Draft| D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
 ```
 
-#### Luồng thực thi trực tiếp
+| Bước | Component       | Task Status | Mô tả                        |
+| ---- | --------------- | ----------- | ---------------------------- |
+| 1    | UI              | -           | User gọi `createTask(input)` |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND           |
+| 3    | TaskService     | Draft       | Tạo task trong DB            |
+| 4    | TaskRepository  | Draft       | Lưu task với status: Draft   |
+| 5    | EventEmitter    | -           | Broadcast tới UI             |
+
+#### Luồng đăng (publishTasks)
 
 ```mermaid
 graph LR
-    A[UI: execute] --> B[DirectController]
-    B --> C[DirectService.execute]
-    C --> D[Engine.execute]
-    D --> E[TaskRepository.save]
+    A[UI: publishTasks] -->|status: Waiting| B[QueueController]
+    B --> C[TaskService.publishTasks]
+    C -->|status: Waiting| D[QueueService.add]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                            |
+| ---- | --------------- | ----------- | -------------------------------- |
+| 1    | UI              | Draft       | User gọi `publishTasks(taskIds)` |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND               |
+| 3    | TaskService     | Waiting     | Cập nhật status Waiting          |
+| 4    | QueueService    | Waiting     | Thêm vào queue                   |
+| 5    | EventEmitter    | -           | Broadcast tới UI                 |
+
+#### Luồng thực thi hàng đợi (queueStart)
+
+```mermaid
+graph LR
+    A[UI: queueStart] --> B[QueueController]
+    B --> C[QueueService.process]
+    C -->|status: Running| D[Engine.execute]
+    D -->|status: Completed| E[TaskRepository.save]
     E --> F[EventEmitter.emit]
     F --> G[UI: broadcast]
 ```
+
+| Bước | Component       | Task Status | Mô tả                     |
+| ---- | --------------- | ----------- | ------------------------- |
+| 1    | UI              | Waiting     | User gọi `queueStart()`   |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND        |
+| 3    | QueueService    | Running     | Cập nhật status Running   |
+| 4    | Engine          | Running     | Thực thi logic            |
+| 5    | EngineResult    | Completed   | Thành công: lưu kết quả   |
+| 6    | TaskRepository  | Completed   | Cập nhật task với kết quả |
+| 7    | EventEmitter    | -           | Broadcast tới UI          |
+
+#### Luồng thực thi trực tiếp (runTask)
+
+```mermaid
+graph LR
+    A[UI: runTask] --> B[DirectController]
+    B -->|status: Running| C[DirectService.execute]
+    C --> D[Engine.execute]
+    D -->|status: Completed| E[TaskRepository.save]
+    E --> F[EventEmitter.emit]
+    F --> G[UI: broadcast]
+```
+
+| Bước | Component        | Task Status | Mô tả                      |
+| ---- | ---------------- | ----------- | -------------------------- |
+| 1    | UI               | Waiting     | User gọi `runTask(taskId)` |
+| 2    | DirectController | -           | Nhận DIRECT_COMMAND        |
+| 3    | DirectService    | Running     | Đặt status Running         |
+| 4    | Engine           | Running     | Thực thi trực tiếp         |
+| 5    | EngineResult     | Completed   | Thành công: lưu kết quả    |
+| 6    | TaskRepository   | Completed   | Cập nhật task với kết quả  |
+| 7    | EventEmitter     | -           | Broadcast tới UI           |
+
+#### Luồng dừng (queueStop)
+
+```mermaid
+graph LR
+    A[UI: queueStop] --> B[QueueController]
+    B --> C[QueueService.stop]
+    C -->|status: Waiting| D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                   |
+| ---- | --------------- | ----------- | ----------------------- |
+| 1    | UI              | Running     | User gọi `queueStop()`  |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND      |
+| 3    | QueueService    | Waiting     | Reset Running → Waiting |
+| 4    | TaskRepository  | Waiting     | Lưu status              |
+| 5    | EventEmitter    | -           | Broadcast tới UI        |
+
+#### Luồng hủy (queueCancelTask)
+
+```mermaid
+graph LR
+    A[UI: queueCancelTask] --> B[QueueController]
+    B -->|status: Cancelled| C[TaskRepository.save]
+    C --> D[EventEmitter.emit]
+    D --> E[UI: broadcast]
+```
+
+| Bước | Component       | Task Status     | Mô tả                          |
+| ---- | --------------- | --------------- | ------------------------------ |
+| 1    | UI              | Waiting/Running | User gọi `queueCancelTask(id)` |
+| 2    | QueueController | -               | Nhận QUEUE_COMMAND             |
+| 3    | TaskRepository  | Cancelled       | Đặt status Cancelled           |
+| 4    | EventEmitter    | -               | Broadcast tới UI               |
+
+#### Luồng xóa all (queueClear)
+
+```mermaid
+graph LR
+    A[UI: queueClear] --> B[QueueController]
+    B --> C[QueueService.clear]
+    C --> D[TaskRepository.save]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                     |
+| ---- | --------------- | ----------- | ------------------------- |
+| 1    | UI              | -           | User gọi `queueClear()`   |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND        |
+| 3    | QueueService    | -           | Xóa all tasks trong queue |
+| 4    | TaskRepository  | -           | Xóa all tasks khỏi DB     |
+| 5    | EventEmitter    | -           | Broadcast tới UI          |
+
+#### Luồng thử lại (retryTask)
+
+```mermaid
+graph LR
+    A[UI: retryTask] --> B[QueueController]
+    B -->|status: Waiting| C[TaskService.retryTask]
+    C --> D[QueueService.add]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                        |
+| ---- | --------------- | ----------- | ---------------------------- |
+| 1    | UI              | Error       | User gọi `retryTask(taskId)` |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND           |
+| 3    | TaskService     | Waiting     | Reset Error → Waiting        |
+| 4    | QueueService    | Waiting     | Thêm lại vào queue           |
+| 5    | EventEmitter    | -           | Broadcast tới UI             |
+
+#### Luồng bỏ qua (skipTask)
+
+```mermaid
+graph LR
+    A[UI: skipTask] --> B[QueueController]
+    B -->|status: Skipped| C[TaskRepository.save]
+    C --> D[EventEmitter.emit]
+    D --> E[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                       |
+| ---- | --------------- | ----------- | --------------------------- |
+| 1    | UI              | Running     | User gọi `skipTask(taskId)` |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND          |
+| 3    | TaskRepository  | Skipped     | Đặt status Skipped          |
+| 4    | EventEmitter    | -           | Broadcast tới UI            |
+
+#### Luồng xóa (deleteTask)
+
+```mermaid
+graph LR
+    A[UI: deleteTask] --> B[QueueController]
+    B --> C[TaskService.deleteTask]
+    C --> D[TaskRepository.delete]
+    D --> E[EventEmitter.emit]
+    E --> F[UI: broadcast]
+```
+
+| Bước | Component       | Task Status | Mô tả                         |
+| ---- | --------------- | ----------- | ----------------------------- |
+| 1    | UI              | Any         | User gọi `deleteTask(taskId)` |
+| 2    | QueueController | -           | Nhận QUEUE_COMMAND            |
+| 3    | TaskService     | -           | Kiểm tra task tồn tại         |
+| 4    | TaskRepository  | -           | Xóa khỏi DB                   |
+| 5    | EventEmitter    | -           | Broadcast tới UI              |
 
 ### Vòng đời tác vụ
 
 ```mermaid
 stateDiagram-v2
     [*] --> Draft
-    Draft --> Waiting: add() / publishTasks()
-    Waiting --> Running: start() / execute()
+    Draft --> Waiting: publishTasks()
+    Waiting --> Running: queueStart()
+    Waiting --> Draft: unpublishTasks()
+    Waiting --> Running: runTask() [direct]
     Running --> Completed: thành công
     Running --> Error: thất bại
-    Error --> Waiting: retryTask
+    Running --> Skipped: skipTask()
+    Error --> Waiting: retryTask()
+    Error --> Skipped: skipTask()
+    Waiting --> Cancelled: queueCancelTask()
+    Running --> Cancelled: queueCancelTask()
+    Cancelled --> [*]
     Completed --> [*]
-    Error --> [*]
+    Skipped --> [*]
 ```
 
 ### Persistence & Hydration
