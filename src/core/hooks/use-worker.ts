@@ -8,7 +8,7 @@ import type {
   AsyncResult,
 } from '@/core/common/types';
 import { COMMANDS, DIRECT_COMMAND } from '@/core/constants/commands';
-import type { SyncResponse } from '@/core/controllers/queue.controller';
+import type { SyncResponse } from '@/core/controllers/script.controller';
 import { EVENTS } from '@/core/events/emitter';
 
 export interface WorkerConfig {

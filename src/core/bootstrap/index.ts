@@ -1,6 +1,6 @@
 import { getQueueService } from '@/core/services/queue.service';
 import { registerEngines, type EngineRegistry } from '@/core/common/registry';
-import { createQueueController } from '@/core/controllers/queue.controller';
+import { createScriptController } from '@/core/controllers/script.controller';
 import { createDirectController } from '@/core/controllers/direct.controller';
 import { onPortConnect } from '@/core/utils/port-tracker';
 
@@ -21,7 +21,7 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
     debugLog(`[BOOTSTRAP] UI port connected: ${port.sender?.url || 'unknown'}`);
   });
 
-  const queueController = createQueueController(debugLog);
+  const scriptController = createScriptController(debugLog);
   const directController = createDirectController(debugLog);
 
   const boot = async () => {
@@ -36,7 +36,7 @@ export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions 
   chrome.runtime.onMessage.addListener(
     (message: any, _sender: any, sendResponse: (response?: any) => void) => {
       if (message.type === 'COMMANDS') {
-        const result = queueController(message);
+        const result = scriptController(message);
 
         if (result && 'then' in result) {
           result.then((r: any) => sendResponse(r));

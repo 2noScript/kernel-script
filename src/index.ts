@@ -7,7 +7,7 @@ export { directService } from '@/core/services/direct.service';
 export { taskService } from '@/core/services/task.service';
 export { taskRepository } from '@/core/repositories/task.repository';
 export { emitEvent, EVENTS } from '@/core/events/emitter';
-export { createQueueController } from '@/core/controllers/queue.controller';
+export { createScriptController } from '@/core/controllers/script.controller';
 export { createDirectController } from '@/core/controllers/direct.controller';
 export { bootstrap, setupKernelScript, type SetupOptions } from '@/core/bootstrap';
 export type {

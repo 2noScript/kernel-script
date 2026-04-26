@@ -26,7 +26,7 @@ export interface SyncResponse {
   taskConfig: TaskConfig;
 }
 
-export const createTaskController = (debugLog: (...args: unknown[]) => void) => {
+export const createScriptController = (debugLog: (...args: unknown[]) => void) => {
   return async (message: CommandPayload) => {
     const { command, keycard, identifier = '', payload } = message;
 

@@ -433,7 +433,7 @@ function TaskQueue() {
 
 | Export                     | Mô tả                      |
 | -------------------------- | -------------------------- |
-| `createQueueController()`  | Tạo queue command handler  |
+| `createScriptController()`  | Tạo queue command handler  |
 | `createDirectController()` | Tạo direct command handler |
 
 ### Services
@@ -527,14 +527,14 @@ bootstrap(registry, { debug: true });
 ### Controllers (Background Script)
 
 ```typescript
-import { createQueueController, createDirectController } from 'kernel-script';
+import { createScriptController, createDirectController } from 'kernel-script';
 
-const queueController = createQueueController();
+const scriptController = createScriptController();
 const directController = createDirectController();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'COMMANDS') {
-    queueController.handle(message, sendResponse);
+    scriptController.handle(message, sendResponse);
   } else if (message.type === 'DIRECT_COMMAND') {
     directController.handle(message, sendResponse);
   }
