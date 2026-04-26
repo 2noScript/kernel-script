@@ -1,7 +1,7 @@
 import type { BaseEngine } from '@/core/common/types';
-import type { QueueService } from '@/core/services/queue.service';
+import { queueService } from '@/core/services/queue.service';
 
-export function registerEngines(engines: BaseEngine[], queueService: QueueService) {
+export function registerEngines(engines: BaseEngine[]) {
   engines.forEach((engine) => {
     queueService.registerEngine(engine);
   });

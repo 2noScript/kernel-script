@@ -1,10 +1,11 @@
 import PQueue from 'p-queue';
-import type { Task, TaskConfig, EngineResult, BaseEngine } from '@/core/common/types';
+import type { Task, TaskConfig, BaseEngine } from '@/core/common/types';
 import { engineHub } from '@/core/common/engine-hub';
 import { TaskContext } from '@/core/common/task.context';
 import { sleep } from '@/core/utils/helper';
 import { taskRepository } from '@/core/repositories/task.repository';
 import { emitEvent, EVENTS } from '@/core/events/emitter';
+import { debugLog } from '@/core/common/log';
 
 export interface QueueStatus {
   size: number;
@@ -30,19 +31,6 @@ export class QueueService {
   private runningQueues: Set<string> = new Set();
   private concurrencyMap: Map<string, number> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
-  private debugLog: (...args: unknown[]) => void = () => {};
-
-  constructor(options: QueueOptions = {}) {
-    if (options.debugLog) {
-      this.debugLog = options.debugLog;
-    }
-  }
-
-  registerOptions(options: QueueOptions): void {
-    if (options.debugLog) {
-      this.debugLog = options.debugLog;
-    }
-  }
 
   private getQueueKey(keycard: string, identifier: string): string {
     return `${keycard}__${identifier}`;
@@ -127,7 +115,7 @@ export class QueueService {
     }
 
     this.tasksMap.set(key, tasks);
-    this.debugLog(`[Queue] ADD task ${task.id}`);
+    debugLog(`[Queue] ADD task ${task.id}`);
   }
 
   async addMany(keycard: string, identifier: string, newTasks: Task[]): Promise<void> {
@@ -151,7 +139,7 @@ export class QueueService {
     }
 
     this.tasksMap.set(key, tasks);
-    this.debugLog(`[Queue] ADD_MANY ${newTasks.length} tasks`);
+    debugLog(`[Queue] ADD_MANY ${newTasks.length} tasks`);
   }
 
   async start(keycard: string, identifier: string): Promise<void> {
@@ -170,7 +158,7 @@ export class QueueService {
 
     this.runningQueues.add(key);
     entry.queue.start();
-    this.debugLog(`[Queue] START`);
+    debugLog(`[Queue] START`);
   }
 
   async pause(keycard: string, identifier: string): Promise<void> {
@@ -180,7 +168,7 @@ export class QueueService {
 
     entry.queue.pause();
     this.runningQueues.delete(key);
-    this.debugLog(`[Queue] PAUSE`);
+    debugLog(`[Queue] PAUSE`);
   }
 
   async stop(keycard: string, identifier: string): Promise<void> {
@@ -204,7 +192,7 @@ export class QueueService {
     this.tasksMap.set(key, tasks);
 
     this.runningQueues.delete(key);
-    this.debugLog(`[Queue] STOP`);
+    debugLog(`[Queue] STOP`);
   }
 
   async resume(keycard: string, identifier: string): Promise<void> {
@@ -213,7 +201,7 @@ export class QueueService {
     if (entry) {
       entry.queue.start();
       this.runningQueues.add(key);
-      this.debugLog(`[Queue] RESUME`);
+      debugLog(`[Queue] RESUME`);
     }
   }
 
@@ -228,7 +216,7 @@ export class QueueService {
     }
 
     this.tasksMap.delete(key);
-    this.debugLog(`[Queue] CLEAR`);
+    debugLog(`[Queue] CLEAR`);
   }
 
   haltTask(keycard: string, identifier: string, taskId: string): void {
@@ -276,14 +264,14 @@ export class QueueService {
     const taskIdx = tasks.findIndex((t) => t.id === taskId);
 
     if (taskIdx === -1) {
-      this.debugLog(`[Queue] CANCEL_TASK ${taskId} - not found`);
+      debugLog(`[Queue] CANCEL_TASK ${taskId} - not found`);
       return;
     }
 
     const task = tasks[taskIdx]!;
 
     if (task.status === 'Completed') {
-      this.debugLog(`[Queue] CANCEL_TASK ${taskId} - task is already completed, cannot cancel`);
+      debugLog(`[Queue] CANCEL_TASK ${taskId} - task is already completed, cannot cancel`);
       return;
     }
 
@@ -302,7 +290,7 @@ export class QueueService {
       task,
     });
 
-    this.debugLog(`[Queue] CANCEL_TASK ${taskId} - status changed to Cancelled`);
+    debugLog(`[Queue] CANCEL_TASK ${taskId} - status changed to Cancelled`);
   }
 
   async retryTasks(keycard: string, identifier: string, taskIds?: string[]): Promise<string[]> {
@@ -324,7 +312,7 @@ export class QueueService {
     }
 
     this.tasksMap.set(key, tasks);
-    this.debugLog(`[Queue] RETRY_TASKS ${tasksToRetry.length} tasks`);
+    debugLog(`[Queue] RETRY_TASKS ${tasksToRetry.length} tasks`);
     return tasksToRetry.map((t) => t.id);
   }
 
@@ -388,7 +376,7 @@ export class QueueService {
     const tasks = this.tasksMap.get(key) || [];
     const taskIndex = tasks.findIndex((t) => t.id === task.id);
     if (taskIndex === -1) {
-      this.debugLog(`[Queue] Task ${task.id} was removed. Skipping.`);
+      debugLog(`[Queue] Task ${task.id} was removed. Skipping.`);
       return;
     }
 
@@ -471,13 +459,13 @@ export class QueueService {
 
     const currentTaskBeforeStart = this.findTask(keycard, identifier, task.id);
     if (!currentTaskBeforeStart || currentTaskBeforeStart.status !== 'Running') {
-      this.debugLog(
+      debugLog(
         `[Queue] Task ${task.id} cancelled or no longer running before PROCESS_START. Status: ${currentTaskBeforeStart?.status}. Exiting.`
       );
       return;
     }
 
-    this.debugLog(`[Queue] PROCESS_START ${task.id}`);
+    debugLog(`[Queue] PROCESS_START ${task.id}`);
 
     const ctx = new TaskContext(task, controller.signal);
 
@@ -498,7 +486,7 @@ export class QueueService {
       if (!finTask) return;
 
       if (finTask.status !== 'Running') {
-        this.debugLog(`Task ${task.id} status changed to ${finTask.status}. Bailing out.`);
+        debugLog(`Task ${task.id} status changed to ${finTask.status}. Bailing out.`);
         return;
       }
 
@@ -590,11 +578,4 @@ export class QueueService {
   }
 }
 
-let queueServiceInstance: QueueService | null = null;
-
-export function getQueueService(options?: QueueOptions): QueueService {
-  if (!queueServiceInstance) {
-    queueServiceInstance = new QueueService(options);
-  }
-  return queueServiceInstance;
-}
+export const queueService = new QueueService();

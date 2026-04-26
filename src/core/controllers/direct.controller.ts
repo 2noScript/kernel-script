@@ -1,8 +1,9 @@
 import { DIRECT_COMMAND } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
 import { directService } from '@/core/services/direct.service';
+import { debugLog } from '@/core/common/log';
 
-export const createDirectController = (debugLog: (...args: unknown[]) => void) => {
+export const createDirectController = () => {
   return async (message: any) => {
     const { command, keycard, identifier = '', payload } = message;
     const taskId = payload?.taskId;

@@ -10,11 +10,11 @@ import type {
 import { COMMANDS, DIRECT_COMMAND } from '@/core/constants/commands';
 import type { SyncResponse } from '@/core/controllers/script.controller';
 import { EVENTS } from '@/core/events/emitter';
+import { debugLog } from '@/core/common/log';
 
 export interface WorkerConfig {
   engine: BaseEngine;
   identifier: string;
-  debug?: boolean;
 }
 
 export interface UseWorkerReturn {
@@ -45,17 +45,8 @@ export interface UseWorkerReturn {
 }
 
 export function useWorker(config: WorkerConfig): UseWorkerReturn {
-  const { engine, identifier, debug = false } = config;
+  const { engine, identifier } = config;
   const keycard = engine.keycard;
-
-  const debugLog = useCallback(
-    (...args: unknown[]) => {
-      if (debug) {
-        console.log(...args);
-      }
-    },
-    [debug]
-  );
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isRunning, setIsRunning] = useState(false);

@@ -1,5 +1,4 @@
 export {
-  getQueueService,
   type QueueOptions,
   type QueueStatus,
 } from '@/core/services/queue.service';

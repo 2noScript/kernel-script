@@ -1,8 +1,8 @@
-import { getQueueService } from '@/core/services/queue.service';
 import { registerEngines, type EngineRegistry } from '@/core/common/registry';
 import { createScriptController } from '@/core/controllers/script.controller';
 import { createDirectController } from '@/core/controllers/direct.controller';
 import { onPortConnect } from '@/core/utils/port-tracker';
+import { debugLog, enableDebug } from '@/core/common/log';
 
 export type SetupOptions = {
   debug?: boolean;
@@ -11,18 +11,16 @@ export type SetupOptions = {
 export const bootstrap = (engineRegistry: EngineRegistry, options: SetupOptions = {}) => {
   const { debug = false } = options;
 
-  const debugLog = (...args: unknown[]) => {
-    if (debug) console.log(...args);
-  };
+  if (debug) enableDebug();
 
-  registerEngines(engineRegistry.getEngines(), getQueueService());
+  registerEngines(engineRegistry.getEngines());
 
   onPortConnect((port) => {
     debugLog(`[BOOTSTRAP] UI port connected: ${port.sender?.url || 'unknown'}`);
   });
 
-  const scriptController = createScriptController(debugLog);
-  const directController = createDirectController(debugLog);
+  const scriptController = createScriptController();
+  const directController = createDirectController();
 
   const boot = async () => {
     try {

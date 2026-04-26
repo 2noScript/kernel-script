@@ -1,7 +1,8 @@
 import { COMMANDS } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
-import { getQueueService } from '@/core/services/queue.service';
 import type { Task, TaskInput, TaskConfig } from '@/core/common/types';
+import { queueService } from '@/core/services/queue.service';
+import { debugLog } from '@/core/common/log';
 
 export type CommandPayload = {
   command: string;
@@ -26,7 +27,7 @@ export interface SyncResponse {
   taskConfig: TaskConfig;
 }
 
-export const createScriptController = (debugLog: (...args: unknown[]) => void) => {
+export const createScriptController = () => {
   return async (message: CommandPayload) => {
     const { command, keycard, identifier = '', payload } = message;
 
@@ -35,7 +36,6 @@ export const createScriptController = (debugLog: (...args: unknown[]) => void) =
         debugLog(`[CONTROLLER] SYNC from ${keycard}/${identifier}`);
         const tasks = await taskService.getTasks(keycard, identifier);
         const status = await taskService.getQueueStatus(keycard, identifier);
-        const queueService = getQueueService();
         const taskConfig = queueService.getTaskConfig(keycard, identifier);
 
         return {

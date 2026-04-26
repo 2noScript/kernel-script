@@ -1,7 +1,7 @@
 import { taskRepository } from '@/core/repositories/task.repository';
-import { getQueueService } from '@/core/services/queue.service';
 import { directService } from '@/core/services/direct.service';
 import type { Task, TaskInput, QueueStatus } from '@/core/common/types';
+import { queueService } from '@/core/services/queue.service';
 
 export type TaskFilters = {
   status?: Task['status'][];
@@ -90,7 +90,7 @@ export class TaskService {
       Cancelled: [],
       Previous: [],
       Skipped: [],
-      Delaying:[]
+      Delaying: [],
     };
 
     for (const task of tasks) {
@@ -134,7 +134,6 @@ export class TaskService {
     if (updatedTasks.length > 0) {
       await taskRepository.saveTasks(keycard, identifier, tasks);
 
-      const queueService = getQueueService();
       await queueService.addMany(keycard, identifier, updatedTasks);
     }
 
@@ -156,7 +155,6 @@ export class TaskService {
     }
 
     if (updatedTasks.length > 0) {
-      const queueService = getQueueService();
       for (const task of updatedTasks) {
         await queueService.cancelTask(keycard, identifier, task.id);
       }
@@ -243,7 +241,6 @@ export class TaskService {
     }
     await taskRepository.saveTasks(keycard, identifier, tasks);
 
-    const queueService = getQueueService();
     await queueService.addMany(
       keycard,
       identifier,
@@ -253,7 +250,6 @@ export class TaskService {
   }
 
   async queueStop(keycard: string, identifier: string): Promise<void> {
-    const queueService = getQueueService();
     await queueService.stop(keycard, identifier);
 
     const tasks = await taskRepository.getTasks(keycard, identifier);
@@ -267,13 +263,11 @@ export class TaskService {
   }
 
   async queueCancelTask(keycard: string, identifier: string, taskId: string): Promise<boolean> {
-    const queueService = getQueueService();
     await queueService.cancelTask(keycard, identifier, taskId);
     return true;
   }
 
   async queueCancelTasks(keycard: string, identifier: string, taskIds: string[]): Promise<number> {
-    const queueService = getQueueService();
     let cancelledCount = 0;
     for (const taskId of taskIds) {
       await queueService.cancelTask(keycard, identifier, taskId);
@@ -283,12 +277,10 @@ export class TaskService {
   }
 
   async getQueueStatus(keycard: string, identifier: string): Promise<QueueStatus | null> {
-    const queueService = getQueueService();
     return queueService.getStatus(keycard, identifier);
   }
 
   async clearQueue(keycard: string, identifier: string): Promise<void> {
-    const queueService = getQueueService();
     await queueService.clear(keycard, identifier);
     await taskRepository.clearTasks(keycard, identifier);
   }
@@ -298,7 +290,6 @@ export class TaskService {
     identifier: string,
     config: { threads?: number; delayMin?: number; delayMax?: number; stopOnErrorCount?: number }
   ): Promise<void> {
-    const queueService = getQueueService();
     const currentConfig = queueService.getTaskConfig(keycard, identifier);
     queueService.updateTaskConfig(keycard, identifier, {
       ...currentConfig,
@@ -307,7 +298,6 @@ export class TaskService {
   }
 
   async hydrateAndSync(keycard: string, identifier: string): Promise<void> {
-    const queueService = getQueueService();
     const tasks = await taskRepository.getTasks(keycard, identifier);
 
     for (const task of tasks) {
