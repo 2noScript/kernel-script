@@ -1,6 +1,7 @@
 import { QUEUE_COMMAND } from '@/core/constants/commands';
 import { taskService } from '@/core/services/task.service';
 import { getQueueService } from '@/core/services/queue.service';
+import { emitEvent, EVENTS } from '@/core/events/emitter';
 import type { Task, TaskInput, TaskConfig } from '@/core/common/types';
 
 export type CommandPayload = {
@@ -150,6 +151,9 @@ export const createQueueController = (debugLog: (...args: unknown[]) => void) =>
       case QUEUE_COMMAND.RESET_TASKS: {
         debugLog(`[CONTROLLER] RESET_TASKS ${payload.taskIds?.length} in ${keycard}/${identifier}`);
         const tasks = await taskService.resetTasks(keycard, identifier, payload.taskIds || []);
+        for (const task of tasks) {
+          emitEvent(EVENTS.TASK_UPDATED, { keycard, identifier, task });
+        }
         return { tasks };
       }
 

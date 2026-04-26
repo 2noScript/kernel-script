@@ -2,7 +2,15 @@ export type Task = {
   id: string;
   no: number;
   name: string;
-  status: 'Draft' | 'Waiting' | 'Running' | 'Completed' | 'Error' | 'Previous' | 'Skipped';
+  status:
+    | 'Draft'
+    | 'Waiting'
+    | 'Running'
+    | 'Completed'
+    | 'Error'
+    | 'Cancelled'
+    | 'Previous'
+    | 'Skipped';
   progress: number;
   payload: Record<string, any>;
   result?: EngineResult;

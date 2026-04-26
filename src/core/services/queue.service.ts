@@ -265,8 +265,8 @@ export class QueueService {
     const key = this.getQueueKey(keycard, identifier);
     const tasks = this.tasksMap.get(key) || [];
     const idx = tasks.findIndex((t) => t.id === taskId);
-    if (idx !== -1 && tasks[idx]?.status === 'Running') {
-      tasks[idx].status = 'Waiting';
+    if (idx !== -1 && tasks[idx]?.status !== 'Completed') {
+      tasks[idx].status = 'Cancelled';
       tasks[idx].isQueued = false;
       this.tasksMap.set(key, tasks);
 
@@ -296,9 +296,38 @@ export class QueueService {
     }
 
     const tasks = this.tasksMap.get(key) || [];
-    const filtered = tasks.filter((t) => t.id !== taskId);
-    this.tasksMap.set(key, filtered);
-    this.debugLog(`[Queue] CANCEL_TASK ${taskId}`);
+    const taskIdx = tasks.findIndex((t) => t.id === taskId);
+
+    if (taskIdx === -1) {
+      this.debugLog(`[Queue] CANCEL_TASK ${taskId} - not found`);
+      return;
+    }
+
+    const task = tasks[taskIdx]!;
+
+    if (task.status === 'Completed') {
+      this.debugLog(`[Queue] CANCEL_TASK ${taskId} - task is already completed, cannot cancel`);
+      return;
+    }
+
+    task.status = 'Cancelled';
+    task.isQueued = false;
+
+    tasks[taskIdx] = task;
+    this.tasksMap.set(key, tasks);
+
+    await taskRepository.saveTask(keycard, identifier, task);
+
+    this.callbacks.onTaskCancelled?.(keycard, identifier, taskId);
+
+    emitEvent(EVENTS.TASK_CANCELLED, {
+      keycard,
+      identifier,
+      taskId,
+      task,
+    });
+
+    this.debugLog(`[Queue] CANCEL_TASK ${taskId} - status changed to Cancelled`);
   }
 
   async retryTasks(keycard: string, identifier: string, taskIds?: string[]): Promise<string[]> {
@@ -420,10 +449,26 @@ export class QueueService {
       } catch (err) {
         if (err instanceof Error && err.message === 'CANCELLED') {
           this.updateTaskStatus(keycard, identifier, task.id, {
-            status: 'Waiting',
+            status: 'Cancelled',
             isQueued: false,
             delayUntil: undefined,
           });
+
+          const updatedTask: Task = {
+            ...task,
+            status: 'Cancelled',
+            isQueued: false,
+            delayUntil: undefined,
+          };
+          taskRepository.saveTask(keycard, identifier, updatedTask);
+
+          emitEvent(EVENTS.TASK_CANCELLED, {
+            keycard,
+            identifier,
+            taskId: task.id,
+            task: updatedTask,
+          });
+
           this.abortControllers.delete(task.id);
           entry.queuedIds.delete(task.id);
           return;
@@ -433,6 +478,15 @@ export class QueueService {
     }
 
     this.updateTaskStatus(keycard, identifier, task.id, { delayUntil: undefined });
+
+    const currentTask = this.findTask(keycard, identifier, task.id);
+    if (!currentTask || currentTask.status !== 'Running') {
+      this.debugLog(
+        `[Queue] Task ${task.id} is no longer running. Status: ${currentTask?.status}. Exiting.`
+      );
+      return;
+    }
+
     this.callbacks.onTaskStart?.(keycard, identifier, task.id);
     this.debugLog(`[Queue] PROCESS_START ${task.id}`);
 
@@ -461,7 +515,7 @@ export class QueueService {
 
       if (result.error === 'CANCELLED') {
         this.updateTaskStatus(keycard, identifier, task.id, {
-          status: 'Waiting',
+          status: 'Cancelled',
           isQueued: false,
         });
       } else {
@@ -481,7 +535,7 @@ export class QueueService {
 
       if (isCancelled) {
         this.updateTaskStatus(keycard, identifier, task.id, {
-          status: 'Waiting',
+          status: 'Cancelled',
           isQueued: false,
         });
       } else {

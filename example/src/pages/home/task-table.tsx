@@ -37,6 +37,7 @@ import {
   Send,
   History,
   EyeOff,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -157,7 +158,8 @@ export function TaskTable() {
     }
   }, [worker, tasks]);
 
-  const handleResetSelected = useCallback(() => {
+  const handleResetSelected = useCallback(async () => {
+    await worker.resetTasks(worker.selectedIds);
     toast.success(`Reset ${worker.selectedIds.length} task(s)`);
   }, [worker]);
 
@@ -187,6 +189,7 @@ export function TaskTable() {
       Running: 0,
       Completed: 0,
       Error: 0,
+      Cancelled: 0,
       Previous: 0,
       Skipped: 0,
     };
@@ -288,6 +291,8 @@ export function TaskTable() {
                   'bg-muted text-muted-foreground hover:bg-muted/80',
                 row.original.status === 'Error' &&
                   'bg-destructive/10 text-destructive hover:bg-destructive/20',
+                row.original.status === 'Cancelled' &&
+                  'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20',
                 row.original.status === 'Previous' &&
                   'bg-muted/50 text-muted-foreground/60 hover:bg-muted',
                 row.original.status === 'Draft' &&
@@ -318,6 +323,7 @@ export function TaskTable() {
                       onClick={() => toast.error(row.original.errorMessage || 'Unknown error')}
                     />
                   )}
+                  {row.original.status === 'Cancelled' && <XCircle className="w-2.5 h-2.5" />}
                   {row.original.status === 'Skipped' && <EyeOff className="w-2.5 h-2.5" />}
                   <span>{row.original.status}</span>
                 </div>
@@ -329,7 +335,8 @@ export function TaskTable() {
             <div className="flex gap-2">
               {(row.original.status === 'Error' ||
                 row.original.status === 'Completed' ||
-                row.original.status === 'Skipped') && (
+                row.original.status === 'Skipped' ||
+                row.original.status === 'Cancelled') && (
                 <Button
                   size="icon"
                   variant="ghost"
@@ -347,7 +354,7 @@ export function TaskTable() {
                 variant={
                   ['Waiting', 'Running'].includes(row.original.status) ? 'ghost' : 'secondary'
                 }
-                disabled={true}
+                disabled={!['Waiting', 'Running', 'Delayed'].includes(row.original.status)}
                 className={cn(
                   'w-7 h-7 rounded-lg transition-all shadow-sm',
                   ['Waiting', 'Running'].includes(row.original.status) &&
@@ -356,17 +363,12 @@ export function TaskTable() {
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (row.original.status === 'Waiting' || row.original.status === 'Running') {
+                    await worker.queueCancelTask(row.original.id);
                     toast.success(`Stopped task ${row.original.name}`);
-                  } else {
-                    toast.success(`Started task ${row.original.name}`);
                   }
                 }}
               >
-                {false ? (
-                  <Square className="w-3 h-3 fill-current" />
-                ) : (
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                )}
+                <Square className="w-3 h-3 fill-current" />
               </Button>
             </div>
           </div>
@@ -450,6 +452,14 @@ export function TaskTable() {
               onClick={() => setStatusFilter(statusFilter === 'Error' ? 'all' : 'Error')}
               isActive={statusFilter === 'Error'}
               variant="destructive"
+            />
+            <StatStatus
+              icon={<XCircle className="w-4 h-4 text-orange-500" />}
+              value={stats.Cancelled}
+              label="Cancelled"
+              onClick={() => setStatusFilter(statusFilter === 'Cancelled' ? 'all' : 'Cancelled')}
+              isActive={statusFilter === 'Cancelled'}
+              variant="orange"
             />
             <StatStatus
               icon={<History className="w-4 h-4 text-muted-foreground/60" />}

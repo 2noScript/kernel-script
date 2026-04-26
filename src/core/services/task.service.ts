@@ -87,6 +87,7 @@ export class TaskService {
       Running: [],
       Completed: [],
       Error: [],
+      Cancelled: [],
       Previous: [],
       Skipped: [],
     };
@@ -171,11 +172,15 @@ export class TaskService {
     const updatedTasks: Task[] = [];
 
     for (const task of tasks) {
-      if (idSet.has(task.id) && ['Completed', 'Error', 'Skipped'].includes(task.status)) {
+      if (
+        idSet.has(task.id) &&
+        ['Completed', 'Error', 'Skipped', 'Cancelled'].includes(task.status)
+      ) {
         task.status = 'Draft';
         task.isQueued = false;
         task.progress = 0;
         task.errorMessage = undefined;
+        task.result = undefined;
         task.updateAt = Date.now();
         updatedTasks.push(task);
       }
@@ -263,15 +268,17 @@ export class TaskService {
   async queueCancelTask(keycard: string, identifier: string, taskId: string): Promise<boolean> {
     const queueService = getQueueService();
     await queueService.cancelTask(keycard, identifier, taskId);
-    return taskRepository.deleteTask(keycard, identifier, taskId);
+    return true;
   }
 
   async queueCancelTasks(keycard: string, identifier: string, taskIds: string[]): Promise<number> {
     const queueService = getQueueService();
+    let cancelledCount = 0;
     for (const taskId of taskIds) {
       await queueService.cancelTask(keycard, identifier, taskId);
+      cancelledCount++;
     }
-    return taskRepository.deleteTasks(keycard, identifier, taskIds);
+    return cancelledCount;
   }
 
   async getQueueStatus(keycard: string, identifier: string): Promise<QueueStatus | null> {

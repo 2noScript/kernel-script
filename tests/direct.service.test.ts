@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { DirectService, type DirectCallbacks } from '@/core/services/direct.service';
-import { engineHub } from '@/core/common/engine.hub';
+import { engineHub } from '@/core/common/engine-hub';
 import { createMockTask, createMockEngine } from './setup';
 
 const KEYCARD = 'test-keycard';

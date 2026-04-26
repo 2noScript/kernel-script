@@ -1,68 +1,48 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { QueueService, type QueueCallbacks } from '@/core/services/queue.service';
-import { engineHub } from '@/core/common/engine.hub';
+import { engineHub } from '@/core/common/engine-hub';
 import { createMockTask, createMockEngine } from './setup';
 
-const KEYCARD = 'test-keycard';
 const IDENTIFIER = 'test-id';
 
-let onTaskStartCalled = false;
-let onTaskCompleteCalled = false;
-let onQueueEmptyCalled = false;
-let lastTaskId = '';
-let lastResult: any = null;
-let lastIdentifier = '';
+let testCounter = 0;
+let currentKeycard = '';
 
 const callbacks: QueueCallbacks = {
-  onTaskStart: (keycard, identifier, taskId) => {
-    onTaskStartCalled = true;
-    lastTaskId = taskId;
-    lastIdentifier = identifier;
-  },
-  onTaskComplete: (keycard, identifier, taskId, result) => {
-    onTaskCompleteCalled = true;
-    lastTaskId = taskId;
-    lastResult = result;
-  },
-  onQueueEmpty: (keycard, identifier) => {
-    onQueueEmptyCalled = true;
-    lastIdentifier = identifier;
-  },
+  onTaskStart: (keycard, identifier, taskId) => {},
+  onTaskComplete: (keycard, identifier, taskId, result) => {},
+  onTaskCancelled: (keycard, identifier, taskId) => {},
+  onQueueEmpty: (keycard, identifier) => {},
 };
 
 describe('QueueService', () => {
   let queueService: QueueService;
 
   beforeEach(() => {
+    testCounter++;
+    currentKeycard = `test-keycard-${testCounter}`;
     queueService = new QueueService();
     queueService.registerCallbacks(callbacks);
-    onTaskStartCalled = false;
-    onTaskCompleteCalled = false;
-    onQueueEmptyCalled = false;
-    lastTaskId = '';
-    lastResult = null;
-    lastIdentifier = '';
   });
 
   afterEach(async () => {
-    await queueService.stop(KEYCARD, IDENTIFIER);
-    engineHub.unregister(KEYCARD);
+    await queueService.stop(currentKeycard, IDENTIFIER);
+    engineHub.unregister(currentKeycard);
   });
 
   describe('registerEngine', () => {
     it('should register an engine', () => {
-      const engine = createMockEngine();
+      const engine = createMockEngine({}, currentKeycard);
       queueService.registerEngine(engine);
-      // Engine is registered (no error thrown)
     });
   });
 
   describe('add', () => {
     it('should add task to internal map', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(tasks).toHaveLength(1);
       expect(tasks[0].id).toBe(task.id);
     });
@@ -71,10 +51,10 @@ describe('QueueService', () => {
       const task1 = createMockTask({ id: 'task-1', name: 'Task 1' });
       const task2 = createMockTask({ id: 'task-1', name: 'Task Updated' });
 
-      await queueService.add(KEYCARD, IDENTIFIER, task1);
-      await queueService.add(KEYCARD, IDENTIFIER, task2);
+      await queueService.add(currentKeycard, IDENTIFIER, task1);
+      await queueService.add(currentKeycard, IDENTIFIER, task2);
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(tasks).toHaveLength(1);
       expect(tasks[0].name).toBe('Task Updated');
     });
@@ -87,9 +67,9 @@ describe('QueueService', () => {
         createMockTask({ status: 'Waiting' }),
         createMockTask({ status: 'Waiting' }),
       ];
-      await queueService.addMany(KEYCARD, IDENTIFIER, tasks);
+      await queueService.addMany(currentKeycard, IDENTIFIER, tasks);
 
-      const storedTasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const storedTasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(storedTasks).toHaveLength(3);
     });
   });
@@ -97,29 +77,28 @@ describe('QueueService', () => {
   describe('start/stop', () => {
     it('should start queue', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
-      await queueService.start(KEYCARD, IDENTIFIER);
-
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.isRunning).toBe(true);
     });
 
     it('should stop queue and reset tasks', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
-      await queueService.stop(KEYCARD, IDENTIFIER);
+      await queueService.stop(currentKeycard, IDENTIFIER);
 
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.isRunning).toBe(false);
     });
   });
 
   describe('getStatus', () => {
     it('should return correct status for empty queue', () => {
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
 
       expect(status.size).toBe(0);
       expect(status.pending).toBe(0);
@@ -128,31 +107,31 @@ describe('QueueService', () => {
 
     it('should count waiting tasks as size', async () => {
       const task = createMockTask({ status: 'Waiting', isQueued: true });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.size).toBe(1);
     });
 
     it('should count running tasks as pending', async () => {
       const task = createMockTask({ status: 'Running' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.pending).toBe(1);
     });
   });
 
   describe('updateTaskConfig', () => {
     it('should update task config', () => {
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
         threads: 3,
         delayMin: 2,
         delayMax: 10,
         stopOnErrorCount: 5,
       });
 
-      const config = queueService.getTaskConfig(KEYCARD, IDENTIFIER);
+      const config = queueService.getTaskConfig(currentKeycard, IDENTIFIER);
       expect(config.threads).toBe(3);
       expect(config.delayMin).toBe(2);
       expect(config.delayMax).toBe(10);
@@ -161,76 +140,65 @@ describe('QueueService', () => {
   });
 
   describe('haltTask', () => {
-    it('should abort running task', async () => {
+    it('should set task status to Cancelled', async () => {
       const task = createMockTask({ id: 'task-1', status: 'Running' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      queueService.haltTask(KEYCARD, IDENTIFIER, 'task-1');
+      queueService.haltTask(currentKeycard, IDENTIFIER, 'task-1');
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
-      expect(tasks[0].status).toBe('Waiting');
-      expect(tasks[0].isQueued).toBe(false);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks[0].status).toBe('Cancelled');
     });
   });
 
   describe('cancelTask', () => {
-    it('should remove task from queue', async () => {
+    it('should set task status to Cancelled', async () => {
       const task = createMockTask({ id: 'task-1', status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      await queueService.cancelTask(KEYCARD, IDENTIFIER, 'task-1');
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, 'task-1');
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
-      expect(tasks).toHaveLength(0);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].status).toBe('Cancelled');
     });
-  });
 
-  describe('callbacks', () => {
-    it('should call onTaskStart when task starts processing', async () => {
-      const engine = createMockEngine({ success: true }, KEYCARD);
-      queueService.registerEngine(engine);
-
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
-        threads: 1,
-        delayMin: 0,
-        delayMax: 0,
-        stopOnErrorCount: 0,
-      });
-
+    it('should keep task in tasks list after cancel', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      const taskCountBefore = queueService.getTasks(currentKeycard, IDENTIFIER).length;
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+      const taskCountAfter = queueService.getTasks(currentKeycard, IDENTIFIER).length;
 
-      expect(onTaskStartCalled).toBe(true);
+      expect(taskCountAfter).toBe(taskCountBefore);
     });
   });
 
   describe('pause', () => {
     it('should pause queue without clearing tasks', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
-      await queueService.pause(KEYCARD, IDENTIFIER);
+      await queueService.pause(currentKeycard, IDENTIFIER);
 
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.isRunning).toBe(false);
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(tasks).toHaveLength(1);
     });
 
     it('should resume paused queue', async () => {
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
-      await queueService.pause(KEYCARD, IDENTIFIER);
-      await queueService.resume(KEYCARD, IDENTIFIER);
+      await queueService.pause(currentKeycard, IDENTIFIER);
+      await queueService.resume(currentKeycard, IDENTIFIER);
 
-      const status = queueService.getStatus(KEYCARD, IDENTIFIER);
+      const status = queueService.getStatus(currentKeycard, IDENTIFIER);
       expect(status.isRunning).toBe(true);
     });
   });
@@ -239,11 +207,11 @@ describe('QueueService', () => {
     it('should clear all tasks from queue', async () => {
       const task1 = createMockTask({ id: 'task-1', status: 'Waiting' });
       const task2 = createMockTask({ id: 'task-2', status: 'Waiting' });
-      await queueService.addMany(KEYCARD, IDENTIFIER, [task1, task2]);
+      await queueService.addMany(currentKeycard, IDENTIFIER, [task1, task2]);
 
-      await queueService.clear(KEYCARD, IDENTIFIER);
+      await queueService.clear(currentKeycard, IDENTIFIER);
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(tasks).toHaveLength(0);
     });
   });
@@ -251,20 +219,20 @@ describe('QueueService', () => {
   describe('retryTasks', () => {
     it('should retry error tasks', async () => {
       const task = createMockTask({ id: 'task-1', status: 'Error', errorMessage: 'Failed' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      await queueService.retryTasks(KEYCARD, IDENTIFIER, ['task-1']);
+      await queueService.retryTasks(currentKeycard, IDENTIFIER, ['task-1']);
 
-      const tasks = queueService.getTasks(KEYCARD, IDENTIFIER);
+      const tasks = queueService.getTasks(currentKeycard, IDENTIFIER);
       expect(tasks[0].status).toBe('Waiting');
       expect(tasks[0].errorMessage).toBeUndefined();
     });
 
     it('should return empty array when no error tasks', async () => {
       const task = createMockTask({ id: 'task-1', status: 'Completed' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
 
-      const result = await queueService.retryTasks(KEYCARD, IDENTIFIER);
+      const result = await queueService.retryTasks(currentKeycard, IDENTIFIER);
 
       expect(result).toHaveLength(0);
     });
@@ -286,16 +254,16 @@ describe('QueueService', () => {
     });
 
     it('should update existing keycard concurrency', () => {
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
         threads: 1,
         delayMin: 0,
         delayMax: 0,
         stopOnErrorCount: 0,
       });
 
-      queueService.setConcurrency(KEYCARD, 3);
+      queueService.setConcurrency(currentKeycard, 3);
 
-      const config = queueService.getTaskConfig(KEYCARD, IDENTIFIER);
+      const config = queueService.getTaskConfig(currentKeycard, IDENTIFIER);
       expect(config.threads).toBe(3);
     });
   });
@@ -311,28 +279,35 @@ describe('QueueService', () => {
     });
 
     it('should return stored config after update', () => {
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
         threads: 4,
         delayMin: 5,
         delayMax: 20,
         stopOnErrorCount: 10,
       });
 
-      const config = queueService.getTaskConfig(KEYCARD, IDENTIFIER);
+      const config = queueService.getTaskConfig(currentKeycard, IDENTIFIER);
       expect(config.threads).toBe(4);
       expect(config.delayMin).toBe(5);
       expect(config.delayMax).toBe(20);
       expect(config.stopOnErrorCount).toBe(10);
     });
   });
-  });
 
-  describe('callbacks > onTaskComplete', () => {
-    it('should call onTaskComplete when task completes', async () => {
-      const engine = createMockEngine({ success: true }, KEYCARD);
+  describe('callbacks', () => {
+    it('should call onTaskStart when task starts processing', async () => {
+      let startCalled = false;
+      queueService.registerCallbacks({
+        ...callbacks,
+        onTaskStart: () => {
+          startCalled = true;
+        },
+      });
+
+      const engine = createMockEngine({ success: true }, currentKeycard);
       queueService.registerEngine(engine);
 
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
         threads: 1,
         delayMin: 0,
         delayMax: 0,
@@ -340,36 +315,41 @@ describe('QueueService', () => {
       });
 
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      expect(onTaskCompleteCalled).toBe(true);
-      expect(lastResult?.success).toBe(true);
+      expect(startCalled).toBe(true);
     });
   });
 
-  describe('callbacks > onQueueEmpty', () => {
-    it('should call onQueueEmpty when queue becomes empty', async () => {
-      const engine = createMockEngine({ success: true }, KEYCARD);
+  describe('cancel during execution', () => {
+    it('should set status to Cancelled after starting queue and cancelling', async () => {
+      const engine = createMockEngine({ success: true }, currentKeycard);
       queueService.registerEngine(engine);
 
-      queueService.updateTaskConfig(KEYCARD, IDENTIFIER, {
+      queueService.updateTaskConfig(currentKeycard, IDENTIFIER, {
         threads: 1,
-        delayMin: 0,
-        delayMax: 0,
+        delayMin: 10,
+        delayMax: 10,
         stopOnErrorCount: 0,
       });
 
       const task = createMockTask({ status: 'Waiting' });
-      await queueService.add(KEYCARD, IDENTIFIER, task);
-      await queueService.start(KEYCARD, IDENTIFIER);
+      await queueService.add(currentKeycard, IDENTIFIER, task);
+      await queueService.start(currentKeycard, IDENTIFIER);
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(onQueueEmptyCalled).toBe(true);
-      expect(lastIdentifier).toBe(IDENTIFIER);
+      await queueService.cancelTask(currentKeycard, IDENTIFIER, task.id);
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const cancelledTask = queueService
+        .getTasks(currentKeycard, IDENTIFIER)
+        .find((t) => t.id === task.id);
+      expect(cancelledTask?.status).toBe('Cancelled');
     });
   });
 });

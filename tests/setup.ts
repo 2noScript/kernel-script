@@ -1,4 +1,37 @@
 import type { Task } from '@/core/common/types';
+import { taskRepository } from '@/core/repositories/task.repository';
+
+global.chrome = {
+  runtime: {
+    sendMessage: async () => {},
+    sendNativeMessage: async () => {},
+    lastError: null,
+  },
+  storage: {
+    local: {
+      get: async () => ({}),
+      set: async () => {},
+    },
+  },
+} as any;
+
+const taskRepositoryMock = {
+  saveTask: async () => {},
+  saveTasks: async () => {},
+  getTasks: async () => [],
+  getTask: async () => null,
+  updateTask: async () => null,
+  deleteTask: async () => false,
+  deleteTasks: async () => 0,
+};
+
+taskRepository.saveTask = taskRepositoryMock.saveTask;
+taskRepository.saveTasks = taskRepositoryMock.saveTasks;
+taskRepository.getTasks = taskRepositoryMock.getTasks;
+taskRepository.getTask = taskRepositoryMock.getTask;
+taskRepository.updateTask = taskRepositoryMock.updateTask;
+taskRepository.deleteTask = taskRepositoryMock.deleteTask;
+taskRepository.deleteTasks = taskRepositoryMock.deleteTasks;
 
 const store = new Map<string, { tasks: Task[]; updatedAt: number }>();
 const stateStore = new Map<string, any>();
