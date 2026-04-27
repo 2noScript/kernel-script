@@ -26,6 +26,7 @@ export class TaskService {
     };
 
     await taskRepository.saveTask(keycard, identifier, task);
+    // emitEvent()
     return task;
   }
 
@@ -104,7 +105,7 @@ export class TaskService {
     return taskRepository.deleteTask(keycard, identifier, taskId);
   }
 
-  async deleteTasks(keycard: string, identifier: string, taskIds: string[]): Promise<number> {
+  async deleteTasks(keycard: string, identifier: string, taskIds: string[]): Promise<boolean> {
     return taskRepository.deleteTasks(keycard, identifier, taskIds);
   }
 

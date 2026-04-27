@@ -229,8 +229,8 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
             }
             break;
 
-          case 'QUEUE_EMPTY':
-            debugLog(`[HOOK] QUEUE_EMPTY`);
+          case EVENTS.QUEUE_EMPTY:
+            debugLog(`[HOOK] ${EVENTS.QUEUE_EMPTY}`);
             setIsRunning(false);
             break;
         }
@@ -253,30 +253,36 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
     async (input: TaskInput) => {
       debugLog(`[HOOK] CREATE_TASK ${input.name || 'untitled'}`);
       const result = await sendQueueCommand(COMMANDS.CREATE_TASK, { input });
-      syncFromBackground();
-      return result ?? { success: true };
+      if (result.task) {
+        setTasks((prev) => [...prev, result.task]);
+      }
+      return result;
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const createTasks = useCallback(
     async (inputs: TaskInput[]) => {
       debugLog(`[HOOK] CREATE_TASKS ${inputs.length} tasks`);
       const result = await sendQueueCommand(COMMANDS.CREATE_TASKS, { inputs });
-      syncFromBackground();
-      return result ?? { success: true };
+      if (result.tasks) {
+        setTasks((prev) => [...prev, ...result.tasks]);
+      }
+      return result;
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const deleteTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] DELETE_TASK ${taskId}`);
       const result = await sendQueueCommand(COMMANDS.DELETE_TASK, { taskId });
-      syncFromBackground();
-      return result ?? { success: true };
+      if (result.success) {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      }
+      return result;
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const deleteTasks = useCallback(
@@ -284,10 +290,12 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] DELETE_TASKS ${taskIds.length}`);
       const result = await sendQueueCommand(COMMANDS.DELETE_TASKS, { taskIds });
-      syncFromBackground();
-      return result ?? { success: true };
+      if (result.success) {
+        setTasks((prev) => prev.filter((t) => !taskIds.includes(t.id)));
+      }
+      return result;
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const publishTasks = useCallback(
@@ -295,10 +303,9 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] PUBLISH_TASKS ${taskIds.length}`);
       const result = await sendQueueCommand(COMMANDS.PUBLISH_TASKS, { taskIds });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const unpublishTasks = useCallback(
@@ -306,10 +313,9 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] UNPUBLISH_TASKS ${taskIds.length}`);
       const result = await sendQueueCommand(COMMANDS.UNPUBLISH_TASKS, { taskIds });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const resetTasks = useCallback(
@@ -317,61 +323,54 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] RESET_TASKS ${taskIds.length}`);
       const result = await sendQueueCommand(COMMANDS.RESET_TASKS, { taskIds });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const queueStart = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_START`);
     const result = await sendQueueCommand(COMMANDS.QUEUE_START);
-    syncFromBackground();
     return result ?? { success: true };
-  }, [sendQueueCommand, syncFromBackground, debugLog]);
+  }, [sendQueueCommand, debugLog]);
 
   const queueStop = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_STOP`);
     const result = await sendQueueCommand(COMMANDS.QUEUE_STOP);
-    syncFromBackground();
     return result ?? { success: true };
-  }, [sendQueueCommand, syncFromBackground, debugLog]);
+  }, [sendQueueCommand, debugLog]);
 
   const queueCancelTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] QUEUE_CANCEL_TASK ${taskId}`);
       const result = await sendQueueCommand(COMMANDS.QUEUE_CANCEL_TASK, { taskId });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendQueueCommand, syncFromBackground, debugLog]
+    [sendQueueCommand, debugLog]
   );
 
   const queueClear = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_CLEAR`);
     const result = await sendQueueCommand(COMMANDS.QUEUE_CLEAR);
-    syncFromBackground();
     return result ?? { success: true };
-  }, [sendQueueCommand, syncFromBackground, debugLog]);
+  }, [sendQueueCommand, debugLog]);
 
   const retryTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] RETRY_TASK ${taskId}`);
       const result = await sendDirectCommand(DIRECT_COMMAND.RETRY_TASK, { taskId });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendDirectCommand, syncFromBackground, debugLog]
+    [sendDirectCommand, debugLog]
   );
 
   const skipTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] SKIP_TASK ${taskId}`);
       const result = await sendDirectCommand(DIRECT_COMMAND.SKIP_TASK, { taskId });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendDirectCommand, syncFromBackground, debugLog]
+    [sendDirectCommand, debugLog]
   );
 
   const setTaskConfig = useCallback(
@@ -421,20 +420,18 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
     async (taskId: string) => {
       debugLog(`[HOOK] RUN_TASK ${taskId}`);
       const result = await sendDirectCommand(DIRECT_COMMAND.RUN_TASK, { taskId });
-      syncFromBackground();
       return result ?? { success: false };
     },
-    [sendDirectCommand, syncFromBackground, debugLog]
+    [sendDirectCommand, debugLog]
   );
 
   const stopTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] STOP_TASK ${taskId}`);
       const result = await sendDirectCommand(DIRECT_COMMAND.STOP_TASK, { taskId });
-      syncFromBackground();
       return result ?? { success: true };
     },
-    [sendDirectCommand, syncFromBackground, debugLog]
+    [sendDirectCommand, debugLog]
   );
 
   return {

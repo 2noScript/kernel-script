@@ -102,17 +102,13 @@ export class TaskRepository {
     return true;
   }
 
-  async deleteTasks(keycard: string, identifier: string, taskIds: string[]): Promise<number> {
+  async deleteTasks(keycard: string, identifier: string, taskIds: string[]): Promise<boolean> {
     const tasks = await this.getTasks(keycard, identifier);
     const idSet = new Set(taskIds);
     const filtered = tasks.filter((t) => !idSet.has(t.id));
+    await this.saveTasks(keycard, identifier, filtered);
 
-    const deletedCount = tasks.length - filtered.length;
-    if (deletedCount > 0) {
-      await this.saveTasks(keycard, identifier, filtered);
-    }
-
-    return deletedCount;
+    return true;
   }
 
   async clearTasks(keycard: string, identifier: string): Promise<void> {

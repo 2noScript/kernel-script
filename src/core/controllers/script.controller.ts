@@ -48,13 +48,13 @@ export const createScriptController = () => {
       case COMMANDS.CREATE_TASK: {
         debugLog(`[CONTROLLER] CREATE_TASK ${payload.input?.name} in ${keycard}/${identifier}`);
         const task = await taskService.createTask(keycard, identifier, payload.input!);
-        return { task };
+        return { task, success: true };
       }
 
       case COMMANDS.CREATE_TASKS: {
         debugLog(`[CONTROLLER] CREATE_TASKS ${payload.inputs?.length} in ${keycard}/${identifier}`);
         const tasks = await taskService.createTasks(keycard, identifier, payload.inputs || []);
-        return { tasks };
+        return { tasks, success: true };
       }
 
       case COMMANDS.GET_TASK: {
@@ -79,8 +79,8 @@ export const createScriptController = () => {
         debugLog(
           `[CONTROLLER] DELETE_TASKS ${payload.taskIds?.length} from ${keycard}/${identifier}`
         );
-        const count = await taskService.deleteTasks(keycard, identifier, payload.taskIds || []);
-        return { deletedCount: count };
+        const success = await taskService.deleteTasks(keycard, identifier, payload.taskIds || []);
+        return { success };
       }
 
       case COMMANDS.PUBLISH_TASKS: {

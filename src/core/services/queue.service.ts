@@ -398,12 +398,12 @@ export class QueueService {
         isQueued: true,
         delayUntil,
       });
-      await taskRepository.saveTask(keycard, identifier, {
-        ...task,
-        status: 'Delaying',
-        isQueued: true,
-        delayUntil,
-      });
+      // await taskRepository.saveTask(keycard, identifier, {
+      //   ...task,
+      //   status: 'Delaying',
+      //   isQueued: true,
+      //   delayUntil,
+      // });
 
       emitEvent(EVENTS.TASK_DELAYING, {
         keycard,
