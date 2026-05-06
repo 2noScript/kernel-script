@@ -13,11 +13,6 @@ export interface QueueStatus {
   isRunning: boolean;
 }
 
-export interface QueueOptions {
-  defaultConcurrency?: number;
-  debugLog?: (...args: unknown[]) => void;
-}
-
 interface QueueEntry {
   queue: PQueue;
   queuedIds: Set<string>;

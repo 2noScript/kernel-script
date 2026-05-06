@@ -1,5 +1,4 @@
 export {
-  type QueueOptions,
   type QueueStatus,
 } from '@/core/services/queue.service';
 export { directService } from '@/core/services/direct.service';
@@ -15,7 +14,7 @@ export type {
   TaskConfig,
   EngineResult,
   BaseEngine,
-  AsyncResult,
+  CommandResult,
 } from '@/core/common/types';
 export { useWorker, type WorkerMethods } from '@/core/hooks/use-worker';
 export { registerEngines, createEngineRegistry } from '@/core/common/registry';

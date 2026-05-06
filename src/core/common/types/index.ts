@@ -49,19 +49,7 @@ export type QueueStatus = {
   isRunning: boolean;
 };
 
-export type QueueOptions = {
-  debug?: boolean;
-  storageKey?: string;
-  defaultConcurrency?: number;
-  onTaskStart?: (keycard: string, identifier: string, taskId: string) => void;
-  onTaskComplete?: (
-    keycard: string,
-    identifier: string,
-    taskId: string,
-    result: EngineResult
-  ) => void;
-  onQueueEmpty?: (keycard: string, identifier: string) => void;
-};
+
 
 export type EngineResult = {
   success: boolean;
@@ -78,17 +66,7 @@ export type SerializedQueueState = {
   isRunning: boolean;
 };
 
-export type DirectOptions = {
-  debug?: boolean;
-  storageKey?: string;
-  onTasksUpdate?: (keycard: string, identifier: string, task: Task) => void;
-  onTaskComplete?: (
-    keycard: string,
-    identifier: string,
-    taskId: string,
-    result: EngineResult
-  ) => void;
-};
+
 
 export type CommandResult = {
   success: boolean;
