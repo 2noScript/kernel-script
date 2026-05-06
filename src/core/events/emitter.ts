@@ -29,6 +29,10 @@ export type TaskUpdatedEvent = BaseEvent & {
   task: Task;
 };
 
+export type TaskDelayingEvent=BaseEvent &{
+  task:Task
+}
+
 export type TaskCompletedEvent = BaseEvent & {
   taskId: string;
   result: {

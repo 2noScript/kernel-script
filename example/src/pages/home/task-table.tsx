@@ -163,10 +163,9 @@ export function TaskTable() {
     toast.success(`Reset ${worker.selectedIds.length} task(s)`);
   }, [worker]);
 
-  const handleStartOrStopTasks = useCallback(async () => {
+  const handleStartOrStopQueueTasks = useCallback(async () => {
     if (!worker.isRunning) {
-      const waitingTasks = tasks.filter((t: Task) => t.status === 'Waiting');
-      if (waitingTasks.length > 0) await worker.queueStart();
+      await worker.queueStart();
     } else {
       await worker.queueStop();
     }
@@ -597,7 +596,7 @@ export function TaskTable() {
             </div>
             <div className="relative group">
               <Button
-                onClick={handleStartOrStopTasks}
+                onClick={handleStartOrStopQueueTasks}
                 disabled={
                   tasks.filter((t: Task) => ['Waiting', 'Running'].includes(t.status)).length === 0
                 }

@@ -5,7 +5,7 @@ import type {
   TaskInput,
   TaskConfig,
   EngineResult,
-  AsyncResult,
+  CommandResult,
 } from '@/core/common/types';
 import { COMMANDS, DIRECT_COMMAND } from '@/core/constants/commands';
 import type { SyncResponse } from '@/core/controllers/script.controller';
@@ -23,31 +23,30 @@ export interface UseWorkerReturn {
   selectedIds: string[];
   taskConfig: TaskConfig;
   setTaskConfig: (config: TaskConfig) => Promise<void>;
-  createTask: (input: TaskInput) => Promise<AsyncResult>;
-  createTasks: (inputs: TaskInput[]) => Promise<AsyncResult>;
-  deleteTask: (taskId: string) => Promise<AsyncResult>;
-  deleteTasks: (taskIds: string[]) => Promise<AsyncResult>;
-  publishTasks: (taskIds: string[]) => Promise<AsyncResult>;
-  unpublishTasks: (taskIds: string[]) => Promise<AsyncResult>;
-  resetTasks: (taskIds: string[]) => Promise<AsyncResult>;
-  queueStart: () => Promise<AsyncResult>;
-  queueStop: () => Promise<AsyncResult>;
-  queueCancelTask: (taskId: string) => Promise<AsyncResult>;
-  queueClear: () => Promise<AsyncResult>;
-  retryTask: (taskId: string) => Promise<AsyncResult>;
-  skipTask: (taskId: string) => Promise<AsyncResult>;
+  createTask: (input: TaskInput) => Promise<CommandResult>;
+  createTasks: (inputs: TaskInput[]) => Promise<CommandResult>;
+  deleteTask: (taskId: string) => Promise<CommandResult>;
+  deleteTasks: (taskIds: string[]) => Promise<CommandResult>;
+  publishTasks: (taskIds: string[]) => Promise<CommandResult>;
+  unpublishTasks: (taskIds: string[]) => Promise<CommandResult>;
+  resetTasks: (taskIds: string[]) => Promise<CommandResult>;
+  queueStart: () => Promise<CommandResult>;
+  queueStop: () => Promise<CommandResult>;
+  queueCancelTask: (taskId: string) => Promise<CommandResult>;
+  queueClear: () => Promise<CommandResult>;
+  retryTask: (taskId: string) => Promise<CommandResult>;
+  skipTask: (taskId: string) => Promise<CommandResult>;
   toggleSelect: (taskId: string) => void;
   toggleSelectAll: (taskIds?: string[]) => void;
   clearSelected: () => void;
   runTask: (taskId: string) => Promise<EngineResult>;
-  stopTask: (taskId: string) => Promise<AsyncResult>;
+  stopTask: (taskId: string) => Promise<CommandResult>;
   sync: () => void;
 }
 
 export function useWorker(config: WorkerConfig): UseWorkerReturn {
   const { engine, identifier } = config;
   const keycard = engine.keycard;
-
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -78,7 +77,7 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
     }
   }, []);
 
-  const sendQueueCommand = useCallback(
+  const sendCommand = useCallback(
     (command: string, payload?: any): Promise<any> => {
       return new Promise((resolve) => {
         safeSendMessage(
@@ -177,6 +176,18 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
           case EVENTS.ALL_STATE:
             debugLog(`[HOOK] ${EVENTS.ALL_STATE}`, data);
             break;
+          case EVENTS.TASK_DELAYING:
+            debugLog(`[HOOK] ${EVENTS.TASK_DELAYING}`, data);
+            if (data.task) {
+              setTasks((prev) =>
+                prev.map((t) => {
+                  if (t.id === data.task.id) return data.task;
+                  return t;
+                })
+              );
+            }
+            break;
+
           case EVENTS.TASK_RUNNING:
             debugLog(`[HOOK] ${EVENTS.TASK_RUNNING}`, data);
             if (data.task) {
@@ -189,7 +200,6 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
                 }
                 return prev;
               });
-              setIsRunning(true);
             }
             break;
 
@@ -251,109 +261,116 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
 
   const createTask = useCallback(
     async (input: TaskInput) => {
-      debugLog(`[HOOK] CREATE_TASK ${input.name || 'untitled'}`);
-      const result = await sendQueueCommand(COMMANDS.CREATE_TASK, { input });
+      debugLog(`[HOOK] CREATE_TASK ${input.name}`);
+      const result = await sendCommand(COMMANDS.CREATE_TASK, { input });
       if (result.task) {
         setTasks((prev) => [...prev, result.task]);
       }
       return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const createTasks = useCallback(
     async (inputs: TaskInput[]) => {
       debugLog(`[HOOK] CREATE_TASKS ${inputs.length} tasks`);
-      const result = await sendQueueCommand(COMMANDS.CREATE_TASKS, { inputs });
+      const result = await sendCommand(COMMANDS.CREATE_TASKS, { inputs });
       if (result.tasks) {
         setTasks((prev) => [...prev, ...result.tasks]);
       }
       return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const deleteTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] DELETE_TASK ${taskId}`);
-      const result = await sendQueueCommand(COMMANDS.DELETE_TASK, { taskId });
+      const result = await sendCommand(COMMANDS.DELETE_TASK, { taskId });
       if (result.success) {
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
       }
       return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const deleteTasks = useCallback(
     async (taskIds: string[]) => {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] DELETE_TASKS ${taskIds.length}`);
-      const result = await sendQueueCommand(COMMANDS.DELETE_TASKS, { taskIds });
+      const result = await sendCommand(COMMANDS.DELETE_TASKS, { taskIds });
       if (result.success) {
         setTasks((prev) => prev.filter((t) => !taskIds.includes(t.id)));
       }
       return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const publishTasks = useCallback(
     async (taskIds: string[]) => {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] PUBLISH_TASKS ${taskIds.length}`);
-      const result = await sendQueueCommand(COMMANDS.PUBLISH_TASKS, { taskIds });
-      return result ?? { success: true };
+      const result = await sendCommand(COMMANDS.PUBLISH_TASKS, { taskIds });
+      if (result.tasks) {
+        setTasks(result.tasks);
+      }
+      return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const unpublishTasks = useCallback(
     async (taskIds: string[]) => {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] UNPUBLISH_TASKS ${taskIds.length}`);
-      const result = await sendQueueCommand(COMMANDS.UNPUBLISH_TASKS, { taskIds });
-      return result ?? { success: true };
+      const result = await sendCommand(COMMANDS.UNPUBLISH_TASKS, { taskIds });
+      return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const resetTasks = useCallback(
     async (taskIds: string[]) => {
       if (taskIds.length === 0) return { success: true };
       debugLog(`[HOOK] RESET_TASKS ${taskIds.length}`);
-      const result = await sendQueueCommand(COMMANDS.RESET_TASKS, { taskIds });
-      return result ?? { success: true };
+      const result = await sendCommand(COMMANDS.RESET_TASKS, { taskIds });
+      return result;
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const queueStart = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_START`);
-    const result = await sendQueueCommand(COMMANDS.QUEUE_START);
-    return result ?? { success: true };
-  }, [sendQueueCommand, debugLog]);
+    const result = await sendCommand(COMMANDS.QUEUE_START);
+    if (result.isRunning) {
+      setIsRunning(result.isRunning);
+    }
+    return result;
+  }, [sendCommand, debugLog]);
 
   const queueStop = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_STOP`);
-    const result = await sendQueueCommand(COMMANDS.QUEUE_STOP);
-    return result ?? { success: true };
-  }, [sendQueueCommand, debugLog]);
+    const result = await sendCommand(COMMANDS.QUEUE_STOP);
+    setIsRunning(result.isRunning);
+    return result;
+  }, [sendCommand, debugLog]);
 
   const queueCancelTask = useCallback(
     async (taskId: string) => {
       debugLog(`[HOOK] QUEUE_CANCEL_TASK ${taskId}`);
-      const result = await sendQueueCommand(COMMANDS.QUEUE_CANCEL_TASK, { taskId });
+      const result = await sendCommand(COMMANDS.QUEUE_CANCEL_TASK, { taskId });
       return result ?? { success: true };
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const queueClear = useCallback(async () => {
     debugLog(`[HOOK] QUEUE_CLEAR`);
-    const result = await sendQueueCommand(COMMANDS.QUEUE_CLEAR);
+    const result = await sendCommand(COMMANDS.QUEUE_CLEAR);
     return result ?? { success: true };
-  }, [sendQueueCommand, debugLog]);
+  }, [sendCommand, debugLog]);
 
   const retryTask = useCallback(
     async (taskId: string) => {
@@ -377,9 +394,9 @@ export function useWorker(config: WorkerConfig): UseWorkerReturn {
     async (config: TaskConfig) => {
       debugLog(`[HOOK] SET_TASK_CONFIG`, config);
       setTaskConfigState(config);
-      await sendQueueCommand(COMMANDS.SET_TASK_CONFIG, { taskConfig: config });
+      await sendCommand(COMMANDS.SET_TASK_CONFIG, { taskConfig: config });
     },
-    [sendQueueCommand, debugLog]
+    [sendCommand, debugLog]
   );
 
   const toggleSelect = useCallback(

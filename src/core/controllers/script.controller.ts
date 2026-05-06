@@ -45,6 +45,14 @@ export const createScriptController = () => {
         } as SyncResponse;
       }
 
+      case COMMANDS.GROUP_STATUS: {
+        debugLog(`[CONTROLLER] ${COMMANDS.GROUP_STATUS} from ${keycard}/${identifier}`);
+        const groupStatus = await taskService.getTasksGroupedByStatus(keycard, identifier);
+        return {
+          groupStatus,
+        };
+      }
+
       case COMMANDS.CREATE_TASK: {
         debugLog(`[CONTROLLER] CREATE_TASK ${payload.input?.name} in ${keycard}/${identifier}`);
         const task = await taskService.createTask(keycard, identifier, payload.input!);
@@ -85,7 +93,7 @@ export const createScriptController = () => {
 
       case COMMANDS.PUBLISH_TASKS: {
         debugLog(
-          `[CONTROLLER] PUBLISH_TASKS ${payload.taskIds?.length} in ${keycard}/${identifier}`
+          `[CONTROLLER] ${COMMANDS.PUBLISH_TASKS} ${payload.taskIds?.length} in ${keycard}/${identifier}`
         );
         const tasks = await taskService.publishTasks(keycard, identifier, payload.taskIds || []);
         return { tasks };
@@ -102,13 +110,13 @@ export const createScriptController = () => {
       case COMMANDS.QUEUE_START: {
         debugLog(`[CONTROLLER] QUEUE_START ${keycard}/${identifier}`);
         await taskService.queueStart(keycard, identifier);
-        return { success: true };
+        return { success: true, isRunning: true };
       }
 
       case COMMANDS.QUEUE_STOP: {
         debugLog(`[CONTROLLER] QUEUE_STOP ${keycard}/${identifier}`);
         await taskService.queueStop(keycard, identifier);
-        return { success: true };
+        return { success: true, isRunning: false };
       }
 
       case COMMANDS.QUEUE_CANCEL_TASK: {
@@ -153,7 +161,7 @@ export const createScriptController = () => {
         for (const task of tasks) {
           // emitEvent(EVENTS.TASK_UPDATED, { keycard, identifier, task });
         }
-        return { tasks };
+        return { tasks, success: true };
       }
 
       default:

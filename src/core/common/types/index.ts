@@ -90,6 +90,7 @@ export type DirectOptions = {
   ) => void;
 };
 
-export type AsyncResult = {
+export type CommandResult = {
   success: boolean;
+  [key: string]: any;
 };

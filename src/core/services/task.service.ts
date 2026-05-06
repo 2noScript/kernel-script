@@ -134,7 +134,6 @@ export class TaskService {
 
     if (updatedTasks.length > 0) {
       await taskRepository.saveTasks(keycard, identifier, tasks);
-
       await queueService.addMany(keycard, identifier, updatedTasks);
     }
 
@@ -242,11 +241,11 @@ export class TaskService {
     }
     await taskRepository.saveTasks(keycard, identifier, tasks);
 
-    await queueService.addMany(
-      keycard,
-      identifier,
-      tasks.filter((t) => t.status === 'Waiting')
-    );
+    // await queueService.addMany(
+    //   keycard,
+    //   identifier,
+    //   tasks.filter((t) => t.status === 'Waiting')
+    // );
     await queueService.start(keycard, identifier);
   }
 
@@ -256,7 +255,7 @@ export class TaskService {
     const tasks = await taskRepository.getTasks(keycard, identifier);
     for (const task of tasks) {
       if (task.status === 'Running') {
-        task.status = 'Waiting';
+        task.status = 'Cancelled';
         task.isQueued = false;
       }
     }
